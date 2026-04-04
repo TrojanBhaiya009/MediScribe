@@ -1,0 +1,17 @@
+Checkpoint: checkpoint-20260326-fullstack
+Created: 2026-03-26
+Purpose: Reimplementation of auth, inventory, inline EMR editing, WhatsApp mock, and seed script
+Files:
+backend\main.py
+backend\database.py
+backend\models.py
+backend\routers\__init__.py
+backend\routers\visits.py
+backend\routers\auth.py
+backend\routers\inventory.py
+backend\scripts\seed_demo_data.py
+frontend\src\lib\api.ts
+frontend\src\app\login\doctor\page.tsx
+frontend\src\app\login\pharmacist\page.tsx
+frontend\src\app\dashboard\handover\page.tsx
+frontend\src\app\dashboard\scribe\page.tsx

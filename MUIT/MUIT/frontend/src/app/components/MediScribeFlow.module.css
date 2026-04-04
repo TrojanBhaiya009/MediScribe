@@ -1,0 +1,402 @@
+.flowContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    background-color: var(--color-hospital-white);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: #fff;
+    border-bottom: 1px solid rgba(11, 29, 58, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    z-index: 10;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logoIcon {
+    font-size: 2rem;
+    color: var(--color-electric-green);
+}
+
+.logoText {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-navy-blue);
+    letter-spacing: -0.5px;
+}
+
+.userProfile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: var(--color-navy-blue);
+    cursor: pointer;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--color-navy-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.mainContent {
+    flex: 1;
+    padding: 30px 40px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.sectionCard {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(11, 29, 58, 0.04);
+    border: 1px solid rgba(11, 29, 58, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sectionTitleGroup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sectionTitleGroup h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-navy-blue);
+}
+
+.iconAudio {
+    font-size: 1.4rem;
+}
+
+.liveIndicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-muted-red);
+    background: rgba(255, 51, 51, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+
+.liveDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-muted-red);
+    animation: blink 1s infinite alternate;
+}
+
+.waveformContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 60px;
+    background: rgba(0, 210, 135, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.waveformBar {
+    width: 4px;
+    background-color: var(--color-electric-green);
+    border-radius: 2px;
+    animation: pulse 1s infinite ease-in-out;
+}
+
+.transcriptionFeed {
+    max-height: 120px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px 5px;
+    scroll-behavior: smooth;
+}
+
+.transcriptionFeed::-webkit-scrollbar {
+    width: 6px;
+}
+
+.transcriptionFeed::-webkit-scrollbar-thumb {
+    background: rgba(11, 29, 58, 0.2);
+    border-radius: 3px;
+}
+
+.transcriptionText {
+    font-size: 1.1rem;
+    color: var(--color-text-light-mode);
+    line-height: 1.5;
+    animation: scrollText 0.4s ease forwards;
+}
+
+.listeningText {
+    color: #8892a0;
+    font-style: italic;
+    animation: blink 2s infinite alternate;
+}
+
+/* Auto EMR Middle Section */
+.emrSection {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+}
+
+.hiddenTitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.emrCard3D {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(11, 29, 58, 0.1), 0 2px 8px rgba(11, 29, 58, 0.05);
+    border-top: 4px solid var(--color-navy-blue);
+    transform: perspective(1000px) rotateX(2deg);
+    transition: transform 0.3s ease;
+}
+
+.emrCard3D:hover {
+    transform: perspective(1000px) rotateX(0deg);
+}
+
+.emrHeader {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(11, 29, 58, 0.08);
+    background: #fcfcfd;
+    border-radius: 12px 12px 0 0;
+}
+
+.emrTitle {
+    font-weight: 600;
+    color: var(--color-navy-blue);
+}
+
+.emrStatus {
+    font-size: 0.85rem;
+    color: var(--color-electric-green);
+    font-weight: 600;
+    background: rgba(0, 210, 135, 0.1);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.emrBody {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.emrRow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.emrLabel {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6b7a90;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.emrField {
+    background: #f4f7fb;
+    border: 1px solid rgba(11, 29, 58, 0.1);
+    padding: 16px;
+    border-radius: 8px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.glowingText {
+    color: var(--color-navy-blue);
+    font-weight: 600;
+    font-size: 1.1rem;
+    animation: glowText 2s infinite alternate;
+}
+
+.placeholderText {
+    color: #a0aec0;
+    font-style: italic;
+    font-size: 1.1rem;
+}
+
+.allergyWarningCard {
+    background-color: var(--color-warning-yellow);
+    border: 1px solid var(--color-warning-border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(133, 100, 4, 0.1);
+    animation: scrollText 0.5s ease forwards;
+}
+
+.allergyHeader {
+    color: var(--color-warning-text);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.allergyDetails {
+    color: #664d03;
+    font-size: 0.95rem;
+    margin-left: 28px;
+}
+
+/* Dual Output Section */
+.dualOutputSection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.outputCard3D {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 25px rgba(11, 29, 58, 0.08);
+    border: 1px solid rgba(11, 29, 58, 0.05);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 180px;
+    transform: perspective(1000px) rotateY(-2deg);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.outputCard3D:hover {
+    transform: perspective(1000px) rotateY(0deg) translateY(-5px);
+    box-shadow: 0 12px 30px rgba(11, 29, 58, 0.12);
+}
+
+.patientSummaryCard {
+    transform: perspective(1000px) rotateY(2deg);
+}
+
+.outputBadge {
+    position: absolute;
+    top: -12px;
+    right: 20px;
+    background: var(--color-navy-blue);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(11, 29, 58, 0.2);
+}
+
+.outputTitle {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-navy-blue);
+    border-bottom: 2px solid #f0f4f8;
+    padding-bottom: 12px;
+}
+
+.documentLines {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+.docLine {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.docLineShort {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    width: 60%;
+}
+
+.translateActionBtn {
+    background-color: var(--color-electric-green);
+    color: var(--color-navy-blue);
+    border: none;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 6px 15px rgba(0, 210, 135, 0.3);
+    transition: all 0.2s ease;
+    margin-top: auto;
+}
+
+.translateActionBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 210, 135, 0.4);
+}
+
+.translateIcon {
+    font-size: 1.2rem;
+    background: rgba(11, 29, 58, 0.1);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}

@@ -1,0 +1,274 @@
+.dashboardContainer {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.14), transparent 30%),
+        var(--color-workspace-bg);
+    font-family: var(--font-family-sans);
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 272px;
+    min-width: 272px;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(17, 24, 39, 0.95));
+    color: var(--color-text-primary);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 12px 0 32px -20px rgba(2, 6, 23, 0.8);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 50;
+}
+
+.logoArea {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.logoIcon {
+    font-size: 1.55rem;
+    color: var(--color-accent-green);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(16, 185, 129, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logoText {
+    font-family: var(--font-family-heading);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.sidebarNav {
+    flex: 1;
+    padding: 18px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #b5c4d6;
+    position: relative;
+    font-weight: 500;
+}
+
+.navItem:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.navItem.active {
+    background: rgba(16, 185, 129, 0.15);
+    /* A slightly more pronounced green alpha for the active state on dark navy */
+    color: var(--color-accent-green);
+    font-weight: 600;
+}
+
+.activeNav {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--color-accent-green);
+    font-weight: 600;
+}
+
+.navItem.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background-color: var(--color-accent-green);
+    border-radius: 0 4px 4px 0;
+}
+
+.activeNav::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background-color: var(--color-accent-green);
+    border-radius: 0 4px 4px 0;
+}
+
+.navIcon {
+    font-size: 1.2rem;
+    width: 20px;
+    text-align: center;
+}
+
+.navLabel {
+    font-size: 1rem;
+}
+
+.sidebarFooter {
+    padding: 0 0 20px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.userProfile {
+    margin-top: 20px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.userProfile:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.avatar {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.avatarImg {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.statusDot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background-color: var(--color-accent-green);
+    border-radius: 50%;
+    border: 2px solid var(--color-sidebar-bg);
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.userName {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-sans);
+}
+
+.userRole {
+    font-size: 0.8rem;
+    color: #a0aec0;
+}
+
+.mainContent {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    position: relative;
+    background: linear-gradient(160deg, rgba(31, 41, 55, 0.86), rgba(30, 41, 59, 0.92));
+}
+
+.demoMicPulse {
+    animation: demoMicGlow 1.5s infinite alternate !important;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+}
+
+@keyframes demoMicGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        transform: scale(1);
+    }
+
+    100% {
+        box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0);
+        transform: scale(1.05);
+    }
+}
+
+/* ===================== MOBILE RESPONSIVE ===================== */
+@media (max-width: 768px) {
+    .dashboardContainer {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: unset;
+        height: auto;
+        flex-direction: row;
+        overflow-x: auto;
+        box-shadow: 0 6px 16px -10px rgba(2, 6, 23, 0.9);
+        z-index: 100;
+    }
+
+    .logoArea {
+        display: none;
+    }
+
+    .sidebarNav {
+        flex-direction: row;
+        padding: 6px;
+        gap: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex: 1;
+    }
+
+    .navItem {
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        font-size: 0.7rem;
+        min-width: 70px;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+    }
+
+    .navItem.active::before {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        border-radius: 3px 3px 0 0;
+    }
+
+    .navLabel {
+        font-size: 0.65rem;
+    }
+
+    .sidebarFooter {
+        display: none;
+    }
+
+    .mainContent {
+        flex: 1;
+        height: calc(100vh - 65px);
+        overflow-y: auto;
+    }
+}

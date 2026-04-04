@@ -1,0 +1,32 @@
+{
+  "aggregate": {
+    "totalSamples": 2,
+    "avgRouge1": 0.0,
+    "avgRouge2": 0.0,
+    "avgRougeL": 0.0,
+    "benchmark": 0.72,
+    "beatsBenchmark": false
+  },
+  "samples": [
+    {
+      "sample": 1,
+      "generated_emr": "",
+      "ground_truth": "CC: Severe headache for 3 days\nHPI: Throbbing right-sided headache for 3 days with nausea and photophobia\nMEDS: Sumatriptan 50mg\nDX: Migraine without aura\nPLAN: Sumatriptan 50mg at onset of pain. Follow up in 7 days.",
+      "scores": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0
+      }
+    },
+    {
+      "sample": 2,
+      "generated_emr": "",
+      "ground_truth": "CC: Fever for 3 days with cough\nHPI: Fever up to 101°F for 3 days with cough\nMEDS: Azithromycin 500mg, Paracetamol 500mg\nEXAM: Throat infection noted\nDX: Upper respiratory tract infection\nPLAN: Azithromycin 500mg once daily for 5 days. Paracetamol for fever.",
+      "scores": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0
+      }
+    }
+  ]
+}

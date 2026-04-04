@@ -1,0 +1,32 @@
+[
+  {
+    "transcript": "Doctor: What's the problem? Patient: Fever since yesterday, 101F. Dry cough and sore throat. Doctor: Any allergies? Patient: No. Doctor: Throat congested, chest clear. Viral URTI. Paracetamol 500mg TDS, cough syrup TDS. Return in 3 days if no improvement.",
+    "ground_truth": {
+      "chief_complaint": "Fever with sore throat and cough",
+      "history_of_present_illness": "Fever 101F since yesterday; dry cough; sore throat",
+      "diagnosis": "Viral upper respiratory tract infection",
+      "plan": "Paracetamol 500mg TDS; cough syrup TDS; rest; review in 3 days",
+      "medications": "Paracetamol 500mg, Cough syrup",
+      "examination_findings": "Throat congested; chest clear",
+      "past_history": null,
+      "allergies": "NKDA"
+    },
+    "augmentation_type": "original",
+    "source": "eka_dataset"
+  },
+  {
+    "transcript": "Doctor: Kya problem hai? Patient: Sir dard bahut tez, kal se, right side. Doctor: Nausea? Patient: Haan. Light se problem. Doctor: BP 124/80. Migraine hai. Sumatriptan do. 7 din baad aao.",
+    "ground_truth": {
+      "chief_complaint": "Right-sided headache",
+      "history_of_present_illness": "Right-sided throbbing headache since yesterday; nausea; photophobia",
+      "diagnosis": "Migraine without aura",
+      "plan": "Sumatriptan 50mg at onset; rest in dark room; follow up 7 days",
+      "medications": "Sumatriptan 50mg",
+      "examination_findings": "BP 124/80 mmHg",
+      "past_history": null,
+      "allergies": null
+    },
+    "augmentation_type": "original",
+    "source": "eka_dataset"
+  }
+]

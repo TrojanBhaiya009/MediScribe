@@ -1,0 +1,5 @@
+.next/dev/types/app/dashboard/scribe/page.ts(14,13): error TS2344: Type 'OmitWithTag<typeof import("D:/MUIT (2)/MUIT/MUIT/frontend/src/app/dashboard/scribe/page"), "default" | "metadata" | "viewport" | "config" | "generateStaticParams" | "unstable_prefetch" | ... 8 more ... | "generateViewport", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'ScribeComponent' is incompatible with index signature.
+    Type '(props: { isDemo?: boolean | undefined; onDemoComplete?: (() => void) | undefined; onDemoStart?: (() => void) | undefined; }) => Element' is not assignable to type 'never'.
+src/app/components/DashboardShowcase.tsx(48,37): error TS2322: Type '{ isDemo: boolean; onDemoStart: () => void; onDemoComplete: () => void; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'isDemo' does not exist on type 'IntrinsicAttributes'.

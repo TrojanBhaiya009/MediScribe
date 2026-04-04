@@ -1,0 +1,65 @@
+[
+  {
+    "transcript": "Doctor: What's the problem? Patient: Fever since yesterday, 101F. Dry cough and sore throat. Doctor: Any allergies? Patient: No. Doctor: Throat congested, chest clear. Viral URTI. Paracetamol 500mg TDS, cough syrup TDS. Return in 3 days if no improvement.",
+    "ground_truth": {
+      "chiefComplaint": "Fever with sore throat and cough",
+      "hpi": "Fever 101F since yesterday; dry cough; sore throat",
+      "pastHistory": null,
+      "medications": [
+        "Paracetamol 500mg",
+        "Cough syrup"
+      ],
+      "allergies": "NKDA",
+      "examFindings": "Throat congested; chest clear",
+      "diagnosis": "Viral upper respiratory tract infection",
+      "plan": "Paracetamol 500mg TDS; cough syrup TDS; rest; review in 3 days",
+      "followUpDays": null,
+      "diseaseRisk": {
+        "fluProbability": 0.0,
+        "migraineProbability": 0.0,
+        "fatigueProbability": 0.0,
+        "diabetesProbability": 0.0,
+        "hypertensionProbability": 0.0,
+        "notes": null
+      },
+      "hallucinationCheck": {
+        "isHallucinated": false,
+        "details": null,
+        "confidenceScore": 1.0
+      }
+    },
+    "augmentation_type": "original",
+    "source": "eka_dataset"
+  },
+  {
+    "transcript": "Doctor: Kya problem hai? Patient: Sir dard bahut tez, kal se, right side. Doctor: Nausea? Patient: Haan. Light se problem. Doctor: BP 124/80. Migraine hai. Sumatriptan do. 7 din baad aao.",
+    "ground_truth": {
+      "chiefComplaint": "Right-sided headache",
+      "hpi": "Right-sided throbbing headache since yesterday; nausea; photophobia",
+      "pastHistory": null,
+      "medications": [
+        "Sumatriptan 50mg"
+      ],
+      "allergies": null,
+      "examFindings": "BP 124/80 mmHg",
+      "diagnosis": "Migraine without aura",
+      "plan": "Sumatriptan 50mg at onset; rest in dark room; follow up 7 days",
+      "followUpDays": null,
+      "diseaseRisk": {
+        "fluProbability": 0.0,
+        "migraineProbability": 0.0,
+        "fatigueProbability": 0.0,
+        "diabetesProbability": 0.0,
+        "hypertensionProbability": 0.0,
+        "notes": null
+      },
+      "hallucinationCheck": {
+        "isHallucinated": false,
+        "details": null,
+        "confidenceScore": 1.0
+      }
+    },
+    "augmentation_type": "original",
+    "source": "eka_dataset"
+  }
+]

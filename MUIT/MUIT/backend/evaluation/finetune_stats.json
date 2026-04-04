@@ -1,0 +1,18 @@
+{
+  "totalSamples": 2,
+  "trainSamples": 1,
+  "valSamples": 1,
+  "skipped": 0,
+  "estimatedTokens": 692,
+  "estimatedCostUSD": 0.01,
+  "trainFile": "c:\\Users\\mt149\\Downloads\\MUIT\\MUIT\\backend\\evaluation\\finetune_train.jsonl",
+  "valFile": "c:\\Users\\mt149\\Downloads\\MUIT\\MUIT\\backend\\evaluation\\finetune_val.jsonl",
+  "clinicalMetrics": {
+    "samplesWithRiskData": 0,
+    "riskDensityPercentage": 0.0,
+    "avgRiskIntensity": 0.0
+  },
+  "augmentationBreakdown": {
+    "original": 2
+  }
+}

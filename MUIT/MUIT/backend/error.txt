@@ -1,0 +1,166 @@
+--- MediScribe Database Seeder ---
+2026-03-26 18:02:48,599 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-26 18:02:48,599 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("doctors")
+2026-03-26 18:02:48,599 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:48,600 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patients")
+2026-03-26 18:02:48,600 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:48,601 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("visits")
+2026-03-26 18:02:49,116 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("emrs")
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("disease_risks")
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("qrcodes")
+2026-03-26 18:02:49,117 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("consent_logs")
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("patient_share_consents")
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("pharmacy_inventory")
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_accounts")
+2026-03-26 18:02:49,118 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-26 18:02:49,119 INFO sqlalchemy.engine.Engine COMMIT
+Seeding Users and Doctors...
+2026-03-26 18:02:49,119 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-26 18:02:49,136 INFO sqlalchemy.engine.Engine SELECT doctors.id, doctors."clerkId", doctors.name, doctors.phone, doctors."clinicName", doctors.city, doctors."createdAt", doctors."updatedAt" 
+FROM doctors
+2026-03-26 18:02:49,136 INFO sqlalchemy.engine.Engine [generated in 0.00019s] ()
+D:\MUIT (2)\MUIT\MUIT\backend\scripts\seed_demo_data.py:37: SAWarning: Column 'doctors.id' is marked as a member of the primary key for table 'doctors', but has no Python-side or server-side default generator indicated, nor does it indicate 'autoincrement=True' or 'nullable=True', and no explicit value is passed.  Primary key columns typically may not store NULL.
+  session.commit()
+2026-03-26 18:02:49,140 INFO sqlalchemy.engine.Engine INSERT INTO doctors ("clerkId", name, phone, "clinicName", city, "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)
+2026-03-26 18:02:49,140 INFO sqlalchemy.engine.Engine [generated in 0.00017s (insertmanyvalues) 1/1 (unordered)] ('lorn2', 'Dr. Rajesh Sharma', '+91 98765 43210', None, 'Mumbai', '2026-03-26 18:02:49.137475', '2026-03-26 18:02:49.137604', 'doc2', 'Dr. Anjali Gupta', '+91 98765 11111', None, 'Delhi', '2026-03-26 18:02:49.137879', '2026-03-26 18:02:49.138000', 'doc3', 'Dr. Vikram Singh', '+91 98765 22222', None, 'Bangalore', '2026-03-26 18:02:49.138187', '2026-03-26 18:02:49.138306')
+2026-03-26 18:02:49,141 INFO sqlalchemy.engine.Engine ROLLBACK
+Traceback (most recent call last):
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 2125, in _exec_insertmany_context
+    dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~^
+        cursor,
+        ^^^^^^^
+    ...<2 lines>...
+        context,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: NOT NULL constraint failed: doctors.id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\MUIT (2)\MUIT\MUIT\backend\scripts\seed_demo_data.py", line 202, in <module>
+    main()
+    ~~~~^^
+  File "D:\MUIT (2)\MUIT\MUIT\backend\scripts\seed_demo_data.py", line 195, in main
+    seed_users_and_doctors(session)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "D:\MUIT (2)\MUIT\MUIT\backend\scripts\seed_demo_data.py", line 37, in seed_users_and_doctors
+    session.commit()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1143, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 1844, in _execute_context
+    return self._exec_insertmany_context(dialect, context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 2133, in _exec_insertmany_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e,
+        ^^
+    ...<4 lines>...
+        is_sub_exec=True,
+        ^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\base.py", line 2125, in _exec_insertmany_context
+    dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~^
+        cursor,
+        ^^^^^^^
+    ...<2 lines>...
+        context,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\nayan\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: doctors.id
+[SQL: INSERT INTO doctors ("clerkId", name, phone, "clinicName", city, "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('lorn2', 'Dr. Rajesh Sharma', '+91 98765 43210', None, 'Mumbai', '2026-03-26 18:02:49.137475', '2026-03-26 18:02:49.137604', 'doc2', 'Dr. Anjali Gupta', '+91 98765 11111', None, 'Delhi', '2026-03-26 18:02:49.137879', '2026-03-26 18:02:49.138000', 'doc3', 'Dr. Vikram Singh', '+91 98765 22222', None, 'Bangalore', '2026-03-26 18:02:49.138187', '2026-03-26 18:02:49.138306')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
