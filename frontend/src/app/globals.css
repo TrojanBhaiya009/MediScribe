@@ -1,29 +1,29 @@
 :root {
-  /* Phase 15: Dark Mode Clinic SaaS Palette */
-  --color-workspace-bg: #1F2937;
-  --color-sidebar-bg: #111827;
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #CBD5E1;
-  --color-accent-green: #10B981;
-  --color-accent-green-dark: #059669;
+  /* MediScribe editorial clinical palette */
+  --color-workspace-bg: #f2eee4;
+  --color-sidebar-bg: #fbf7ed;
+  --color-text-primary: #20231f;
+  --color-text-secondary: #66685f;
+  --color-accent-green: #a4492d;
+  --color-accent-green-dark: #7d341f;
 
   /* Legacy Colors (maintained for landing page compatibility if needed) */
-  --color-hospital-white: #f8fafc;
-  --color-navy-blue: #0f172a;
-  --color-royal-blue: #2563eb;
-  --color-electric-green: #22c55e;
-  --color-alert-amber: #f59e0b;
+  --color-hospital-white: #f2eee4;
+  --color-navy-blue: #20231f;
+  --color-royal-blue: #20231f;
+  --color-electric-green: #68794f;
+  --color-alert-amber: #9b681f;
 
-  --color-dark-bg: #070e17;
-  --color-dark-surface: #121c2c;
-  --color-muted-red: #ff3333;
-  --color-text-dark-mode: #b5c4d6;
-  --color-text-light-mode: #1a273b;
-  --surface-soft: #f1f5f9;
-  --surface-card: #ffffff;
-  --border-soft: rgba(11, 29, 58, 0.1);
-  --shadow-soft: 0 8px 24px -12px rgba(11, 29, 58, 0.2);
-  --shadow-medium: 0 20px 45px -20px rgba(11, 29, 58, 0.3);
+  --color-dark-bg: #20231f;
+  --color-dark-surface: #2a2d28;
+  --color-muted-red: #9d3b2a;
+  --color-text-dark-mode: #e8e1d3;
+  --color-text-light-mode: #20231f;
+  --surface-soft: #e8e1d3;
+  --surface-card: #fbf7ed;
+  --border-soft: #c9c2b4;
+  --shadow-soft: none;
+  --shadow-medium: none;
 
   --font-family-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-family-heading: 'Outfit', var(--font-family-sans);
@@ -37,10 +37,7 @@
 
 body {
   font-family: var(--font-family-sans);
-  background:
-    radial-gradient(circle at 15% -10%, rgba(34, 197, 94, 0.09), transparent 36%),
-    radial-gradient(circle at 85% -15%, rgba(37, 99, 235, 0.08), transparent 38%),
-    var(--color-hospital-white);
+  background: var(--color-hospital-white);
   color: var(--color-text-light-mode);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;

@@ -1,89 +1,97 @@
 'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
+import RoleLoginLayout from '../RoleLoginLayout';
 import styles from '../Login.module.css';
 
 export default function PharmacistLogin() {
-    const [userId, setUserId] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-        try {
-            const response = await authApi.login(userId, password);
-            const normalizedRole = String(response.user.role).toUpperCase();
+    try {
+      const response = await authApi.login(userId, password);
+      const normalizedRole = String(response.user.role).toUpperCase();
 
-            if (normalizedRole !== 'PHARMACIST') {
-                setError('This portal is for pharmacists only. Please use the appropriate login.');
-                setLoading(false);
-                return;
-            }
+      if (normalizedRole !== 'PHARMACIST') {
+        setError('This portal is for pharmacists only. Please use the appropriate login.');
+        setLoading(false);
+        return;
+      }
 
-            authApi.storeAuth(response);
-            router.push('/dashboard/handover');
-        } catch (err: any) {
-            setError(err.message || 'Invalid credentials');
-            setLoading(false);
-        }
-    };
+      authApi.storeAuth(response);
+      router.push('/dashboard/handover');
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials');
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className={styles.darkLoginPage}>
-            <div className={styles.darkLoginShell}>
-                <div className={styles.darkLoginCard}>
-                    <div className={styles.darkBrand}>
-                        <div className={styles.darkBrandText}>MediScribe <span style={{ color: 'var(--color-accent-green)' }}>AI</span></div>
-                        <h2 className={styles.darkPortalTitle}>Pharmacy Dispatch</h2>
-                    </div>
+  return (
+    <RoleLoginLayout
+      section="Pharmacy"
+      portalName="Pharmacy dispatch"
+      statement="From prescription to safe handover."
+      detail="Review medication orders, prepare dispensing details, and complete the patient handover with a clear record."
+      credentials={(
+        <>
+          <div>ID: <strong>pharma1</strong> · Password: <strong>Pharma123!</strong></div>
+          <div>ID: <strong>pharma2</strong> · Password: <strong>Pharma456!</strong></div>
+        </>
+      )}
+    >
+      <form onSubmit={handleLogin} className={styles.darkForm} noValidate>
+            {error && (
+              <div className={styles.darkError} role="alert">
+                {error}
+              </div>
+            )}
 
-                    <form onSubmit={handleLogin} className={styles.darkForm}>
-                        {error && (
-                            <div className={styles.darkError}>
-                                {error}
-                            </div>
-                        )}
-
-                        <div className={styles.darkField}>
-                            <label className={styles.darkLabel}>Pharmacist ID</label>
-                            <input
-                                autoFocus
-                                value={userId}
-                                onChange={(e) => setUserId(e.target.value)}
-                                className={styles.darkInput}
-                                placeholder="Enter Pharmacist ID"
-                            />
-                        </div>
-
-                        <div className={styles.darkField}>
-                            <label className={styles.darkLabel}>Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={styles.darkInput}
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <button type="submit" disabled={loading} className={styles.darkSubmit}>
-                            {loading ? 'Signing in...' : 'Open Dispensary'}
-                        </button>
-                    </form>
-
-                    <div className={styles.darkCredentials}>
-                        <div>Testing Credentials:</div>
-                        <div>ID: <b>pharma1</b> | Pass: <b>Pharma123!</b></div>
-                        <div>ID: <b>pharma2</b> | Pass: <b>Pharma456!</b></div>
-                    </div>
-                </div>
+            <div className={styles.darkField}>
+              <label htmlFor="pharmacist-id" className={styles.darkLabel}>
+                Pharmacist ID
+              </label>
+              <input
+                id="pharmacist-id"
+                autoFocus
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className={styles.darkInput}
+                placeholder="Enter Pharmacist ID"
+                autoComplete="username"
+                disabled={loading}
+              />
             </div>
-        </div>
-    );
+
+            <div className={styles.darkField}>
+              <label htmlFor="pharmacist-password" className={styles.darkLabel}>
+                Password
+              </label>
+              <input
+                id="pharmacist-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={styles.darkInput}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                disabled={loading}
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className={styles.darkSubmit}>
+              {loading ? 'Signing in...' : 'Open Dispensary'}
+            </button>
+      </form>
+    </RoleLoginLayout>
+  );
 }

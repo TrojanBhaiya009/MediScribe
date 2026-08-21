@@ -36,12 +36,20 @@ def transcribe_audio(file_path: str, language: str = None) -> str:
         raise RuntimeError("Transcription not available. Set GROQ_API_KEY in backend/.env")
     try:
         with open(file_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
+            request_args = dict(
                 model=_whisper_model,
                 file=audio_file,
-                language=language,
-                prompt="Medical consultation. Common terms: Paracetamol, Ibuprofen, Crocin, Dolo, fever, cough, pain, BP, sugar, diabetes, prescription, symptoms, diagnosis, medicine, tablets, capsules."
+                temperature=0.0,
+                prompt=(
+                    "Verbatim multilingual Indian medical consultation, often Hindi-English. "
+                    "Never infer or add speech. Preserve medicine names, dosage numbers, frequencies, and investigations exactly. "
+                    "Terms may include Paracetamol, Dolo, Crocin, CT scan, MRI, X-ray, ultrasound, ECG, CBC, LFT, KFT, and HbA1c."
+                ),
             )
+            normalized_language = (language or "auto").strip().lower()
+            if normalized_language not in {"", "auto", "mixed", "hinglish"}:
+                request_args["language"] = normalized_language.split("-")[0]
+            transcript = client.audio.transcriptions.create(**request_args)
         
         # Filter common Whisper silence hallucinations
         text = transcript.text.strip()

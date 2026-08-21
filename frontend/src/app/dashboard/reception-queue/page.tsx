@@ -6,8 +6,8 @@ import { useGlobalState } from '../GlobalStateContext';
 const STATUS_FLOW = ['Waiting', 'In Consultation', 'Pharmacy', 'Completed'];
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
     'Waiting':          { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b', icon: '⏳' },
-    'In Consultation':  { bg: 'rgba(56, 189, 248, 0.1)', text: '#38bdf8', icon: '🩺' },
-    'Pharmacy':         { bg: 'rgba(139, 92, 246, 0.1)', text: '#8b5cf6', icon: '💊' },
+    'In Consultation':  { bg: 'rgba(111, 120, 83, 0.1)', text: '#6f7853', icon: '🩺' },
+    'Pharmacy':         { bg: 'rgba(128, 103, 68, 0.1)', text: '#806744', icon: '💊' },
     'Completed':        { bg: 'rgba(16, 185, 129, 0.1)', text: 'var(--color-accent-green)', icon: '✅' },
 };
 

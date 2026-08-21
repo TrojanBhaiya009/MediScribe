@@ -49,35 +49,35 @@ export default function AnalyticsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Viral Fever (B34.9)</div>
                             <div style={{ flex: 1, background: '#f1f5f9', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: '85%', background: '#3b82f6', height: '100%' }}></div>
+                                <div style={{ width: '85%', background: '#a4492d', height: '100%' }}></div>
                             </div>
                             <div style={{ width: '40px', fontSize: '13px', color: '#64748b', textAlign: 'right' }}>412</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Hypertension (I10)</div>
                             <div style={{ flex: 1, background: '#f1f5f9', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: '65%', background: '#3b82f6', height: '100%' }}></div>
+                                <div style={{ width: '65%', background: '#a4492d', height: '100%' }}></div>
                             </div>
                             <div style={{ width: '40px', fontSize: '13px', color: '#64748b', textAlign: 'right' }}>308</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Diabetes T2 (E11)</div>
                             <div style={{ flex: 1, background: '#f1f5f9', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: '50%', background: '#3b82f6', height: '100%' }}></div>
+                                <div style={{ width: '50%', background: '#a4492d', height: '100%' }}></div>
                             </div>
                             <div style={{ width: '40px', fontSize: '13px', color: '#64748b', textAlign: 'right' }}>245</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Migraine (G43)</div>
                             <div style={{ flex: 1, background: '#f1f5f9', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: '30%', background: '#3b82f6', height: '100%' }}></div>
+                                <div style={{ width: '30%', background: '#a4492d', height: '100%' }}></div>
                             </div>
                             <div style={{ width: '40px', fontSize: '13px', color: '#64748b', textAlign: 'right' }}>150</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Osteoarthritis (M19)</div>
                             <div style={{ flex: 1, background: '#f1f5f9', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: '25%', background: '#3b82f6', height: '100%' }}></div>
+                                <div style={{ width: '25%', background: '#a4492d', height: '100%' }}></div>
                             </div>
                             <div style={{ width: '40px', fontSize: '13px', color: '#64748b', textAlign: 'right' }}>133</div>
                         </div>

@@ -1,395 +1,597 @@
-.loginPage {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f0f4f8;
-    /* Soft Hospital White variant */
-    background-image: radial-gradient(circle at 50% 0%, rgba(11, 29, 58, 0.03) 0%, transparent 60%);
-    padding: 20px;
+.page {
+  --paper: #f2eee4;
+  --paper-deep: #e8e1d3;
+  --ink: #20231f;
+  --muted: #686b62;
+  --line: #c9c2b4;
+  --oxide: #a4492d;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-.loginContainer {
-    width: 100%;
-    max-width: 440px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 30px;
+.topbar {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  width: min(100% - 64px, 1280px);
+  margin: 0 auto;
+  border-bottom: 1px solid var(--line);
 }
 
-.brandHeader {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-
-.logoIcon {
-    font-size: 2.8rem;
-    color: var(--color-electric-green);
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.04em;
 }
 
 .logoText {
-    font-family: var(--font-family-heading);
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--color-navy-blue);
-    letter-spacing: -0.5px;
+  font-size: 1.35rem;
+  font-weight: 750;
 }
 
-.loginCard {
-    width: 100%;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 40px;
-    box-shadow: 0 10px 40px rgba(11, 29, 58, 0.08);
-    border: 1px solid rgba(11, 29, 58, 0.05);
+.logoAccent {
+  display: inline-block;
+  color: var(--oxide);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transform: translateY(-8px);
 }
 
-.formTitle {
-    font-size: 1.5rem;
-    color: var(--color-navy-blue);
-    margin-bottom: 8px;
-    text-align: center;
+.topbarNote {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
-.formSubtitle {
-    color: #6b7a90;
-    font-size: 0.95rem;
-    margin-bottom: 30px;
-    text-align: center;
+.loginLayout {
+  width: min(100% - 64px, 1280px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(440px, 0.78fr);
+  gap: clamp(64px, 9vw, 150px);
+  padding: clamp(72px, 10vh, 132px) 0 80px;
 }
 
-.form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+.intro {
+  align-self: start;
 }
 
-.inputGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.eyebrow,
+.portalKicker,
+.roleEyebrow,
+.formKicker {
+  margin: 0 0 22px;
+  color: var(--oxide);
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
 }
 
-.labelRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.headline {
+  max-width: 720px;
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(3.25rem, 6.2vw, 6.2rem);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.055em;
 }
 
-.label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #4a5568;
+.headline em {
+  color: var(--oxide);
+  font-weight: 400;
 }
 
-.forgotLink {
-    font-size: 0.85rem;
-    color: var(--color-electric-green);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
+.subheadline {
+  max-width: 510px;
+  margin: 34px 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  line-height: 1.7;
 }
 
-.forgotLink:hover {
-    color: var(--color-navy-blue);
+.introMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 470px;
+  margin-top: clamp(64px, 9vh, 104px);
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.input {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafd;
-    font-size: 1rem;
-    color: var(--color-navy-blue);
-    transition: all 0.2s ease;
-    outline: none;
+.portalPanel {
+  align-self: start;
 }
 
-.input:focus {
-    border-color: var(--color-electric-green);
-    box-shadow: 0 0 0 3px rgba(0, 210, 135, 0.15);
-    background: #ffffff;
+.portalHeading {
+  margin: 0 0 38px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.035em;
 }
 
-.input::placeholder {
-    color: #a0aec0;
+.grid {
+  border-top: 1px solid var(--ink);
 }
 
-.errorMessage {
-    background: rgba(255, 51, 51, 0.1);
-    color: var(--color-muted-red);
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-    border: 1px solid rgba(255, 51, 51, 0.2);
+.card {
+  border-bottom: 1px solid var(--line);
 }
 
-.submitBtn {
-    margin-top: 10px;
-    background-color: var(--color-navy-blue);
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 16px;
-    font-size: 1.05rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(11, 29, 58, 0.15);
+.cardLink {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 128px;
+  padding: 24px 4px;
+  color: inherit;
+  text-decoration: none;
+  transition: color 160ms ease, padding 160ms ease, background-color 160ms ease;
 }
 
-.submitBtn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(11, 29, 58, 0.25);
-    background-color: #15294a;
+.cardLink:hover {
+  color: var(--oxide);
+  padding-left: 12px;
+  background: rgba(255, 255, 255, 0.22);
 }
 
-.submitBtn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+.cardLink:focus-visible {
+  outline: 2px solid var(--oxide);
+  outline-offset: 4px;
 }
 
-.securityNote {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #a0aec0;
-    font-size: 0.85rem;
-    font-weight: 500;
+.portalNumber {
+  align-self: start;
+  padding-top: 5px;
+  color: var(--oxide);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.85rem;
 }
 
-.lockIcon {
-    font-size: 1rem;
+.cardHeader {
+  min-width: 0;
 }
 
-.portalLanding {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 28px 20px;
-    background:
-        radial-gradient(circle at 8% 10%, rgba(37, 99, 235, 0.2), transparent 34%),
-        radial-gradient(circle at 92% 12%, rgba(16, 185, 129, 0.16), transparent 36%),
-        var(--color-workspace-bg);
+.title {
+  margin: 0 0 7px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 
-.portalHeader {
-    text-align: center;
-    margin-bottom: 22px;
+.desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
-.portalSubTitle {
-    font-size: 1.06rem;
-    color: var(--color-text-secondary);
-    font-weight: 500;
+.cardLink:hover .desc {
+  color: #664b41;
 }
 
-.portalGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-    width: min(860px, 100%);
+.arrow {
+  font-size: 1.45rem;
+  font-weight: 300;
+  transition: transform 160ms ease;
 }
 
-.portalCard {
-    --portal-accent: #3b82f6;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 22px;
-    background:
-        linear-gradient(140deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.92));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    cursor: pointer;
-    text-align: left;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    box-shadow: 0 12px 24px -16px rgba(2, 6, 23, 0.8);
+.cardLink:hover .arrow {
+  transform: translateX(5px);
 }
 
-.portalCard:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 36px -18px rgba(2, 6, 23, 0.92), inset 0 0 0 1px var(--portal-accent);
-    border-color: var(--portal-accent);
+/* Role-specific login pages */
+.rolePage {
+  --paper: #f2eee4;
+  --paper-deep: #e8e1d3;
+  --ink: #20231f;
+  --muted: #686b62;
+  --line: #c9c2b4;
+  --oxide: #a4492d;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1.18fr);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-.portalIconWrap {
-    font-size: 2rem;
-    margin-bottom: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--portal-accent);
-    width: 62px;
-    height: 62px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 14px;
+.roleAside {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 42px clamp(36px, 5vw, 76px) 38px;
+  background: var(--oxide);
+  color: #f8f1e5;
 }
 
-.portalTitle {
-    font-size: 1.14rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    margin: 0;
+.roleBrand {
+  display: inline-flex;
+  align-items: baseline;
+  align-self: flex-start;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+  letter-spacing: -0.04em;
 }
 
-.portalDesc {
-    font-size: 0.9rem;
-    color: var(--color-text-secondary);
-    margin: 0;
-    line-height: 1.55;
+.roleBrandMain {
+  font-size: 1.32rem;
+  font-weight: 750;
 }
 
-.portalNotice {
-    margin-top: 28px;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 10px;
-    font-size: 0.8rem;
-    color: #94a3b8;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    text-align: center;
+.roleBrandAccent {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  transform: translateY(-8px);
 }
 
-.darkLoginPage {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background:
-        radial-gradient(circle at 10% 0%, rgba(16, 185, 129, 0.18), transparent 36%),
-        radial-gradient(circle at 90% 0%, rgba(37, 99, 235, 0.16), transparent 34%),
-        var(--color-workspace-bg);
-    color: var(--color-text-primary);
+.roleStory {
+  margin: auto 0;
+  padding: 80px 0;
 }
 
-.darkLoginShell {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
+.roleEyebrow {
+  color: rgba(255, 247, 233, 0.75);
 }
 
-.darkLoginCard {
-    width: 100%;
-    max-width: 420px;
-    background: linear-gradient(155deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.95));
-    padding: 36px;
-    border-radius: 16px;
-    box-shadow: 0 28px 52px -34px rgba(2, 6, 23, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+.roleStatement {
+  max-width: 590px;
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(3rem, 5.2vw, 5.8rem);
+  font-weight: 400;
+  line-height: 0.97;
+  letter-spacing: -0.055em;
 }
 
-.darkBrand {
-    text-align: center;
-    margin-bottom: 30px;
+.roleDetail {
+  max-width: 430px;
+  margin: 30px 0 0;
+  color: rgba(255, 247, 233, 0.78);
+  font-size: 0.96rem;
+  line-height: 1.7;
 }
 
-.darkBrandText {
-    font-size: 1.9rem;
-    font-weight: 800;
-    color: var(--color-text-primary);
-    letter-spacing: -0.03em;
+.roleAsideMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 247, 233, 0.38);
+  color: rgba(255, 247, 233, 0.72);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.darkPortalTitle {
-    font-size: 1.12rem;
-    color: var(--color-text-secondary);
-    margin-top: 8px;
-    font-weight: 500;
+.roleMain {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 42px clamp(40px, 8vw, 130px) 30px;
+}
+
+.roleMainTop {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 28px;
+}
+
+.secureNote {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.roleFormWrap {
+  width: min(100%, 500px);
+  margin: auto;
+  padding: 64px 0;
+}
+
+.formKicker {
+  margin-bottom: 15px;
+}
+
+.roleTitle {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.45rem, 4vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.rolePrompt {
+  margin: 18px 0 42px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .darkForm {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .darkError {
-    padding: 11px 12px;
-    background: rgba(239, 68, 68, 0.12);
-    color: #f87171;
-    border-radius: 8px;
-    font-size: 0.88rem;
-    border: 1px solid rgba(239, 68, 68, 0.28);
+  padding: 13px 0 13px 16px;
+  border-left: 3px solid #a13d2b;
+  background: #ead8cc;
+  color: #713023;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.5;
 }
 
 .darkField {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
 .darkLabel {
-    font-size: 0.86rem;
-    color: var(--color-text-secondary);
-    font-weight: 500;
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .darkInput {
-    width: 100%;
-    padding: 12px 14px;
-    background: rgba(31, 41, 55, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 10px;
-    color: var(--color-text-primary);
-    outline: none;
+  width: 100%;
+  height: 58px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid #77756d;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.05rem;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 
 .darkInput:focus {
-    border-color: rgba(16, 185, 129, 0.7);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  border-bottom: 2px solid var(--oxide);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.darkInput::placeholder {
+  color: #929087;
+}
+
+.darkInput:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
 }
 
 .darkSubmit {
-    width: 100%;
-    padding: 13px;
-    background: linear-gradient(135deg, #16a34a, #0f766e);
-    color: #ffffff;
-    border: none;
-    border-radius: 10px;
-    font-size: 0.98rem;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 6px;
-    box-shadow: 0 12px 22px -15px rgba(15, 118, 110, 0.95);
+  width: 100%;
+  min-height: 58px;
+  margin-top: 8px;
+  padding: 15px 22px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: #fbf7ed;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.darkSubmit:hover:not(:disabled) {
+  background: var(--oxide);
+  border-color: var(--oxide);
 }
 
 .darkSubmit:disabled {
-    opacity: 0.75;
-    cursor: not-allowed;
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.darkSubmit:focus-visible,
+.darkBackLink:focus-visible {
+  outline: 2px solid var(--oxide);
+  outline-offset: 4px;
 }
 
 .darkCredentials {
-    margin-top: 22px;
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
-    text-align: center;
-    line-height: 1.55;
+  margin-top: 36px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.75;
 }
 
-@media (max-width: 840px) {
-    .portalGrid {
-        grid-template-columns: 1fr;
-    }
+.credentialTitle {
+  margin-bottom: 5px;
+  color: var(--ink);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-@media (max-width: 480px) {
-    .darkLoginCard {
-        padding: 26px 20px;
-    }
+.darkCredentials strong {
+  color: var(--ink);
+  font-weight: 750;
+}
 
-    .portalLanding {
-        padding: 20px 14px;
-    }
+.darkBackLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 27px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.darkBackLink:hover {
+  color: var(--oxide);
+}
+
+.roleFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 960px) {
+  .loginLayout {
+    grid-template-columns: 1fr;
+    gap: 72px;
+  }
+
+  .introMeta {
+    margin-top: 54px;
+  }
+
+  .rolePage {
+    grid-template-columns: 1fr;
+  }
+
+  .roleAside {
+    min-height: auto;
+    padding: 32px 32px 38px;
+  }
+
+  .roleStory {
+    padding: 68px 0 58px;
+  }
+
+  .roleStatement {
+    max-width: 720px;
+    font-size: clamp(3.4rem, 9vw, 6.2rem);
+  }
+
+  .roleMain {
+    min-height: auto;
+    padding: 30px 32px 26px;
+  }
+
+  .roleFormWrap {
+    margin: 0 auto;
+    padding: 72px 0 82px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar,
+  .loginLayout {
+    width: min(100% - 36px, 1280px);
+  }
+
+  .topbar {
+    min-height: 72px;
+  }
+
+  .topbarNote {
+    display: none;
+  }
+
+  .loginLayout {
+    padding: 58px 0 56px;
+    gap: 64px;
+  }
+
+  .headline {
+    font-size: clamp(3.1rem, 15vw, 4.5rem);
+  }
+
+  .introMeta {
+    gap: 18px;
+  }
+
+  .portalHeading {
+    margin-bottom: 26px;
+  }
+
+  .cardLink {
+    grid-template-columns: 32px 1fr auto;
+    gap: 10px;
+    min-height: 116px;
+  }
+
+  .title {
+    font-size: 1.28rem;
+  }
+
+  .roleAside,
+  .roleMain {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .roleStory {
+    padding: 62px 0 48px;
+  }
+
+  .roleStatement {
+    font-size: clamp(3.1rem, 15vw, 4.7rem);
+  }
+
+  .roleAsideMeta,
+  .roleFooter {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .roleFormWrap {
+    padding: 58px 0 68px;
+  }
+
+  .roleMainTop {
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardLink,
+  .arrow,
+  .darkInput,
+  .darkSubmit {
+    transition: none;
+  }
 }

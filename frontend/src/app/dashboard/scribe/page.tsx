@@ -13,12 +13,31 @@ const CONFIDENCE_COLORS: Record<Confidence, { border: string; bg: string; text: 
     blank:  { border: 'rgba(255, 255, 255, 0.1)', bg: 'rgba(255, 255, 255, 0.02)', text: 'var(--color-text-secondary)', label: 'Not mentioned', icon: '⬜' },
 };
 
+function normalizeForCompare(text: string): string {
+    return text.toLocaleLowerCase().replace(/[^\p{L}\p{M}\p{N}\s']/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function shouldDropDuplicateTranscript(existing: Array<{ text?: string }>, incomingText: string): boolean {
+    const normalizedIncoming = normalizeForCompare(incomingText);
+    if (!normalizedIncoming) return true;
+
+    const recent = existing.slice(-5);
+    return recent.some(item => {
+        const normalizedExisting = normalizeForCompare(item.text || '');
+        if (!normalizedExisting) return false;
+
+        if (normalizedExisting === normalizedIncoming) return true;
+        if (normalizedIncoming.length <= 28 && normalizedExisting.includes(normalizedIncoming)) return true;
+        return false;
+    });
+}
+
 function isEmptyValue(value: unknown): boolean {
     if (value === null || value === undefined) return true;
     if (typeof value !== 'string') return false;
 
     const normalized = value.trim().toLowerCase();
-    if (!/[a-z0-9]/.test(normalized)) return true;
+    if (!/[\p{L}\p{N}]/u.test(normalized)) return true;
     if (/^(?:u+h+|u+m+|h+m+|m+h+)$/.test(normalized)) return true;
     return (
         normalized === '' ||
@@ -180,7 +199,9 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
         if (isFinal && id) {
             setTranscripts((prev: any) => ({
                 ...prev,
-                [id]: [...(prev[id] || []), { speaker: 'Doctor/Patient (Whisper)', text: text.trim(), time: timeStr }]
+                [id]: shouldDropDuplicateTranscript(prev[id] || [], text)
+                    ? (prev[id] || [])
+                    : [...(prev[id] || []), { speaker: 'Doctor/Patient (Whisper)', text: text.trim(), time: timeStr }]
             }));
             setInterimTranscript('');
         } else {
@@ -189,7 +210,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
     }, [setTranscripts]);
 
     const nvidiaASR = useNvidiaASR({
-        language: 'en-US',
+        language: 'auto',
         sampleRate: 16000,
         onTranscript: handleNvidiaTranscript,
         onError: (error) => alert(`Server ASR Error: ${error}`),
@@ -445,6 +466,29 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
 
     const isConfirmed = (fieldKey: string) => confirmedFields.includes(fieldKey);
 
+    const reviewRequiredKeys: string[] = emr ? [
+        combinedConfidence(emr.chiefComplaint, emr.hpi) === 'yellow' ? 'chiefComplaint' : null,
+        safeConfidence(emr.diagnosis?.confidence, emr.diagnosis?.value) === 'yellow' ? 'diagnosis' : null,
+        safeConfidence(emr.plan?.confidence, emr.plan?.value) === 'yellow' ? 'plan' : null,
+        ...(emr.medications || []).map((med, idx) => safeConfidence(med.confidence, med.name) === 'yellow' ? `med_${idx}` : null),
+        ...(emr.investigations || []).map((inv, idx) => safeConfidence(inv.confidence, inv.name) === 'yellow' ? `inv_${idx}` : null),
+    ].filter((key): key is string => Boolean(key)) : [];
+    const unresolvedReviewKeys = reviewRequiredKeys.filter((key) => !isConfirmed(key));
+
+    const handleApproval = () => {
+        if (unresolvedReviewKeys.length > 0) {
+            alert(`Please confirm or edit ${unresolvedReviewKeys.length} yellow-tagged item(s) before approval.`);
+            return;
+        }
+        if (emr?.hallucinationCheck?.isHallucinated) {
+            const proceed = confirm(
+                `Grounding check changed unsupported model output. Review the warning before signing.\n\n${emr.hallucinationCheck.details || ''}\n\nApprove the reviewed record?`
+            );
+            if (!proceed) return;
+        }
+        approveAndCommit();
+    };
+
     return (
         <div className={styles.dashboardContent} style={{ padding: '24px 32px' }}>
             {/* Header */}
@@ -454,7 +498,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
             </div>
 
             {/* Top Banner: Patient Context & Controls */}
-            <div className={styles.workflowCard} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: '10px', padding: '16px 24px', marginBottom: '8px', borderLeft: isRecording ? '4px solid #ef4444' : currentCache?.status === 'approved' ? '4px solid #8b5cf6' : '4px solid var(--color-accent-green)', overflow: 'visible', flex: '0 0 auto' }}>
+            <div className={styles.workflowCard} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: '10px', padding: '16px 24px', marginBottom: '8px', borderLeft: isRecording ? '4px solid #ef4444' : currentCache?.status === 'approved' ? '4px solid #806744' : '4px solid var(--color-accent-green)', overflow: 'visible', flex: '0 0 auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: '1 1 580px', minWidth: 0 }}>
                     <div>
                         <span style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Consultation</span>
@@ -490,7 +534,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                             </div>
                             <div>
                                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Status</span>
-                                <div style={{ fontSize: '14px', fontWeight: 600, color: currentCache?.status === 'emr_generated' ? '#f59e0b' : currentCache?.status === 'approved' ? '#8b5cf6' : 'var(--color-accent-green)' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: currentCache?.status === 'emr_generated' ? '#f59e0b' : currentCache?.status === 'approved' ? '#806744' : 'var(--color-accent-green)' }}>
                                     {currentCache?.status === 'emr_generated' ? '⏳ Pending Approval' : currentCache?.status === 'approved' || currentCache?.status === 'committed' ? '✅ Approved' : '🎙️ Recording'}
                                 </div>
                             </div>
@@ -502,7 +546,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                     {isRecording && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 'bold', fontSize: '13px', animation: `${styles.pulse} 2s infinite` }}>
                             <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}></div>
-                            REC {asrProvider === 'nvidia-parakeet' ? '· Whisper' : '· Web'}
+                            REC {asrProvider === 'nvidia-parakeet' ? '· Hinglish auto' : '· Web'}
                         </div>
                     )}
                     
@@ -526,7 +570,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                     transition: 'all 0.2s',
                                 }}
                             >
-                                {asrProvider === 'nvidia-parakeet' ? '🟢 Groq Whisper' : '🌐 Web Speech'}
+                                {asrProvider === 'nvidia-parakeet' ? 'Whisper · Hinglish auto' : 'Web Speech · English'}
                                 <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
                             </button>
                             {showAsrDropdown && (
@@ -558,7 +602,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                         }}
                                     >
                                         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            🟢 Groq Whisper
+                                            Whisper · Hinglish auto-detect
                                             {asrProvider === 'nvidia-parakeet' && <span style={{ color: 'var(--color-accent-green)', fontSize: '14px' }}>✓</span>}
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
@@ -575,7 +619,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                         }}
                                     >
                                         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            🌐 Web Speech API
+                                            Web Speech · English (India)
                                             {asrProvider === 'web-speech' && <span style={{ color: 'var(--color-accent-green)', fontSize: '14px' }}>✓</span>}
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '3px' }}>Chrome/Edge only · No Brave</div>
@@ -644,7 +688,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                 generateEMR(fullTranscript);
                             }}
                             disabled={emrLoading}
-                            style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid #8b5cf6', fontWeight: 'bold', fontSize: '14px', cursor: emrLoading ? 'wait' : 'pointer', background: emrLoading ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid #806744', fontWeight: 'bold', fontSize: '14px', cursor: emrLoading ? 'wait' : 'pointer', background: emrLoading ? 'rgba(128, 103, 68, 0.05)' : 'rgba(128, 103, 68, 0.1)', color: '#806744', display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
                             {emrLoading ? '⏳ Running 3-Agent Pipeline...' : '🧠 Generate EMR'}
                         </button>
@@ -653,10 +697,11 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                     {/* Approve & Commit — commit-on-approval */}
                     {emr && currentCache?.status === 'emr_generated' && (
                         <button
-                            onClick={approveAndCommit}
-                            style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', background: 'var(--color-accent-green)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)' }}
+                            onClick={handleApproval}
+                            disabled={unresolvedReviewKeys.length > 0}
+                            style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '14px', cursor: unresolvedReviewKeys.length ? 'not-allowed' : 'pointer', background: unresolvedReviewKeys.length ? 'var(--color-text-secondary)' : 'var(--color-accent-green)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', opacity: unresolvedReviewKeys.length ? 0.65 : 1 }}
                         >
-                            ✅ Approve &amp; Commit
+                            {unresolvedReviewKeys.length ? `Review ${unresolvedReviewKeys.length} item(s)` : 'Approve & Commit'}
                         </button>
                     )}
 
@@ -704,14 +749,14 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                 }}>
                                     <div style={{
                                         width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
-                                        background: msg.speaker?.includes('Doctor') ? 'rgba(16, 185, 129, 0.15)' : msg.speaker?.includes('Patient') ? 'rgba(56, 189, 248, 0.15)' : 'rgba(139, 92, 246, 0.15)',
+                                        background: msg.speaker?.includes('Doctor') ? 'rgba(16, 185, 129, 0.15)' : msg.speaker?.includes('Patient') ? 'rgba(111, 120, 83, 0.15)' : 'rgba(128, 103, 68, 0.15)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px',
                                     }}>
                                         {msg.speaker?.includes('Doctor') ? '🩺' : msg.speaker?.includes('Patient') ? '🧑' : '🎙️'}
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                            <span style={{ fontSize: '11px', fontWeight: 600, color: msg.speaker?.includes('Doctor') ? 'var(--color-accent-green)' : msg.speaker?.includes('Patient') ? '#38bdf8' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                                            <span style={{ fontSize: '11px', fontWeight: 600, color: msg.speaker?.includes('Doctor') ? 'var(--color-accent-green)' : msg.speaker?.includes('Patient') ? '#6f7853' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                                                 {msg.speaker || 'Transcript'}
                                             </span>
                                             <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', opacity: 0.6 }}>{msg.time}</span>
@@ -778,8 +823,8 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
 
                     {/* Loading indicator */}
                     {emrLoading && (
-                        <div style={{ padding: '16px', background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '13px', color: '#8b5cf6', fontWeight: 'bold' }}>⏳ Agent 1 (Extractor) + Agent 2 (Safety Checker) running...</div>
+                        <div style={{ padding: '16px', background: 'rgba(128, 103, 68, 0.05)', border: '1px solid rgba(128, 103, 68, 0.2)', borderRadius: '8px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '13px', color: '#806744', fontWeight: 'bold' }}>⏳ Agent 1 (Extractor) + Agent 2 (Safety Checker) running...</div>
                             <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Extracting structured EMR with confidence tags, then cross-referencing for drug interactions</div>
                         </div>
                     )}
@@ -828,11 +873,18 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                     </span>
                                 ))}
                                 {currentCache?.status === 'committed' && (
-                                    <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 'bold' }}>
+                                    <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '12px', background: 'rgba(128, 103, 68, 0.1)', color: '#806744', fontWeight: 'bold' }}>
                                         ✓ Hindi Summarizer
                                     </span>
                                 )}
                             </div>
+
+                            {emr.hallucinationCheck?.isHallucinated && (
+                                <div role="alert" style={{ padding: '14px 16px', background: 'rgba(157, 59, 42, 0.08)', borderLeft: '3px solid #9d3b2a', color: 'var(--color-text-primary)', fontSize: '12px', lineHeight: 1.55 }}>
+                                    <strong style={{ display: 'block', color: '#9d3b2a', marginBottom: '4px' }}>Transcript grounding changed the draft</strong>
+                                    {emr.hallucinationCheck.details || 'Unsupported generated content was removed. Review the transcript before approval.'}
+                                </div>
+                            )}
 
                             {/* Chief Complaint & HPI */}
                             <ConfidenceCard title="Chief Complaint & HPI" confidence={combinedConfidence(emr.chiefComplaint, emr.hpi)} fieldKey="chiefComplaint" onConfirm={handleConfirmField} confirmed={isConfirmed('chiefComplaint')} onEdit={handleEditField}>
@@ -868,10 +920,10 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                         {emr.safetyCheck.safetyFlags.map((flag, idx) => (
                                             <div key={idx} style={{
                                                 padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
-                                                background: flag.severity === 'critical' ? 'rgba(239, 68, 68, 0.08)' : flag.severity === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(56, 189, 248, 0.08)',
-                                                border: `1px solid ${flag.severity === 'critical' ? 'rgba(239, 68, 68, 0.3)' : flag.severity === 'warning' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(56, 189, 248, 0.3)'}`,
+                                                background: flag.severity === 'critical' ? 'rgba(239, 68, 68, 0.08)' : flag.severity === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(111, 120, 83, 0.08)',
+                                                border: `1px solid ${flag.severity === 'critical' ? 'rgba(239, 68, 68, 0.3)' : flag.severity === 'warning' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(111, 120, 83, 0.3)'}`,
                                             }}>
-                                                <div style={{ fontWeight: 'bold', color: flag.severity === 'critical' ? '#ef4444' : flag.severity === 'warning' ? '#f59e0b' : '#38bdf8', marginBottom: '4px' }}>
+                                                <div style={{ fontWeight: 'bold', color: flag.severity === 'critical' ? '#ef4444' : flag.severity === 'warning' ? '#f59e0b' : '#6f7853', marginBottom: '4px' }}>
                                                     {flag.severity === 'critical' ? '🚨' : flag.severity === 'warning' ? '⚠️' : 'ℹ️'} {flag.message}
                                                 </div>
                                                 <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>
@@ -919,7 +971,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                 </div>
 
                                 {/* Investigations */}
-                                <div className={styles.workflowCard} style={{ padding: '20px', borderLeft: '4px solid rgba(56, 189, 248, 0.5)' }}>
+                                <div className={styles.workflowCard} style={{ padding: '20px', borderLeft: '4px solid rgba(111, 120, 83, 0.5)' }}>
                                     <h4 style={{ margin: '0 0 12px 0', color: 'var(--color-text-primary)', fontSize: '15px' }}>Investigations Ordered</h4>
                                     {emr.investigations?.length ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -942,7 +994,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                     <div>
                                         <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: 'var(--color-text-primary)', cursor: 'text' }} onDoubleClick={() => handleEditField('plan', prompt('Edit Plan:', emr.plan?.value || '') || emr.plan?.value || '')}>{emr.plan?.value || 'No plan specified.'}</p>
                                         {emr.followUpDays?.value && (
-                                            <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '6px', fontSize: '12px', color: '#38bdf8', fontWeight: 600 }}>
+                                            <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(111, 120, 83, 0.1)', borderRadius: '6px', fontSize: '12px', color: '#6f7853', fontWeight: 600 }}>
                                                 📅 Follow-up in {emr.followUpDays.value} days
                                             </div>
                                         )}
@@ -987,20 +1039,20 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
 
                             {/* Hindi Summary (Agent 3 output — appears after approval) */}
                             {hindiSummaryLoading && (
-                                <div style={{ padding: '16px', background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', textAlign: 'center' }}>
-                                    <span style={{ fontSize: '13px', color: '#8b5cf6', fontWeight: 'bold' }}>⏳ Agent 3 — Generating Hindi patient summary...</span>
+                                <div style={{ padding: '16px', background: 'rgba(128, 103, 68, 0.05)', border: '1px solid rgba(128, 103, 68, 0.2)', borderRadius: '8px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '13px', color: '#806744', fontWeight: 'bold' }}>⏳ Agent 3 — Generating Hindi patient summary...</span>
                                 </div>
                             )}
 
                             {consultationCache?.hindiSummary && (
-                                <div className={styles.workflowCard} style={{ padding: '20px', borderLeft: '4px solid #8b5cf6' }}>
-                                    <h4 style={{ margin: '0 0 12px 0', color: '#8b5cf6', fontSize: '15px' }}>🇮🇳 Patient Summary (Hindi)</h4>
-                                    <div style={{ background: 'rgba(139, 92, 246, 0.05)', padding: '16px', borderRadius: '8px' }}>
+                                <div className={styles.workflowCard} style={{ padding: '20px', borderLeft: '4px solid #806744' }}>
+                                    <h4 style={{ margin: '0 0 12px 0', color: '#806744', fontSize: '15px' }}>🇮🇳 Patient Summary (Hindi)</h4>
+                                    <div style={{ background: 'rgba(128, 103, 68, 0.05)', padding: '16px', borderRadius: '8px' }}>
                                         <p style={{ fontWeight: 'bold', color: 'var(--color-text-primary)', margin: '0 0 8px 0' }}>
                                             {consultationCache.hindiSummary.patientSummary?.diagnosisSimple}
                                         </p>
                                         {consultationCache.hindiSummary.patientSummary?.medicationInstructions?.map((med, idx) => (
-                                            <div key={idx} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #8b5cf6' }}>
+                                            <div key={idx} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #806744' }}>
                                                 <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{med.name}</span>
                                                 <br />
                                                 <span style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>{med.hindiInstruction}</span>

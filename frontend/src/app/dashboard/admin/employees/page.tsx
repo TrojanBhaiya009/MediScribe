@@ -29,18 +29,18 @@ const INITIAL_EMPLOYEES: Employee[] = [
 ];
 
 const DEPT_COLORS: Record<string, string> = {
-    'General Medicine': '#818cf8',
-    'Paediatrics': '#c084fc',
-    'Front Desk': '#38bdf8',
-    'Pharmacy': '#34d399',
+    'General Medicine': '#8a5a3d',
+    'Paediatrics': '#9b7550',
+    'Front Desk': '#6f7853',
+    'Pharmacy': '#68794f',
     'Emergency': '#f87171',
 };
 
 const STATUS_CONFIG: Record<EmployeeStatus, { bg: string; color: string; label: string }> = {
-    'Active': { bg: 'rgba(16,185,129,0.15)', color: '#10b981', label: '🟢 Active' },
-    'On Leave': { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b', label: '🌙 On Leave' },
-    'Inactive': { bg: 'rgba(156,163,175,0.15)', color: '#9ca3af', label: '⬜ Inactive' },
-    'Deactivated': { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', label: '🔴 Deactivated' },
+    'Active': { bg: 'rgba(104,121,79,0.15)', color: '#68794f', label: 'Active' },
+    'On Leave': { bg: 'rgba(155,104,31,0.15)', color: '#9b681f', label: 'On Leave' },
+    'Inactive': { bg: 'rgba(102,104,95,0.12)', color: '#66685f', label: 'Inactive' },
+    'Deactivated': { bg: 'rgba(157,59,42,0.12)', color: '#9d3b2a', label: 'Deactivated' },
 };
 
 function ConfirmModal({ emp, action, onConfirm, onCancel }: { emp: Employee; action: string; onConfirm: () => void; onCancel: () => void }) {
@@ -120,7 +120,7 @@ export default function EmployeeListPage() {
 
             {/* Header */}
             <div>
-                <h1 className={styles.pageTitle} style={{ fontSize: '26px' }}>🪪 Employee Directory</h1>
+                <h1 className={styles.pageTitle} style={{ fontSize: '26px' }}>Employee Directory</h1>
                 <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginTop: '4px' }}>
                     Manage all staff accounts — activate, deactivate, or update leave status
                 </p>
@@ -129,10 +129,10 @@ export default function EmployeeListPage() {
             {/* Stats Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 {[
-                    { label: 'Total Staff', value: stats.total, icon: '👤', color: '#818cf8' },
-                    { label: 'Active', value: stats.active, icon: '🟢', color: '#10b981' },
-                    { label: 'On Leave', value: stats.onLeave, icon: '🌙', color: '#f59e0b' },
-                    { label: 'Inactive / Deactivated', value: stats.inactive, icon: '🔴', color: '#ef4444' },
+                    { label: 'Total Staff', value: stats.total, icon: '01', color: '#8a5a3d' },
+                    { label: 'Active', value: stats.active, icon: '02', color: '#68794f' },
+                    { label: 'On Leave', value: stats.onLeave, icon: '03', color: '#9b681f' },
+                    { label: 'Inactive / Deactivated', value: stats.inactive, icon: '04', color: '#9d3b2a' },
                 ].map(s => (
                     <div key={s.label} className={styles.workflowCard} style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <span style={{ fontSize: '1.8rem' }}>{s.icon}</span>

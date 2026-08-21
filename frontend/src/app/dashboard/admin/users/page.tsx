@@ -12,8 +12,8 @@ export default function ManageUsersPage() {
             </div>
 
             <div style={{ maxWidth: '600px' }}>
-                <div style={{ padding: '16px', background: 'rgba(56, 189, 248, 0.1)', borderLeft: '4px solid #38bdf8', borderRadius: '8px', marginBottom: '24px' }}>
-                    <h4 style={{ margin: 0, color: '#38bdf8', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '16px', background: 'rgba(111, 120, 83, 0.1)', borderLeft: '4px solid #6f7853', borderRadius: '8px', marginBottom: '24px' }}>
+                    <h4 style={{ margin: 0, color: '#6f7853', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>🛡️</span> Strict KYC Enforcement
                     </h4>
                     <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>

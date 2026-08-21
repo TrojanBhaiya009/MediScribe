@@ -29,11 +29,13 @@ asr_settings = ASRSettings()
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_WHISPER_MODEL = "whisper-large-v3-turbo"
 DEFAULT_MEDICAL_PROMPT = (
-    "Medical consultation recording. Common terms include: fever, cough, pain, headache, "
-    "nausea, vomiting, diarrhea, BP (blood pressure), sugar (glucose), diabetes, hypertension, "
-    "Paracetamol, Ibuprofen, Crocin, Dolo, antibiotics, prescription, diagnosis, symptoms, "
-    "vitals, temperature, pulse, medication, tablets, capsules, syrup, injection, test, "
-    "X-ray, scan, report. Transcribe all speech accurately including incomplete sentences."
+    "Verbatim multilingual transcription of an Indian doctor-patient consultation, often Hindi-English code-switching. "
+    "Do not infer, summarize, continue, paraphrase, or add any words not spoken. "
+    "Keep medicine names, quantities, and dosage numbers exactly as spoken. "
+    "Preserve investigations exactly, including CT scan, MRI, X-ray, ultrasound, ECG, CBC, LFT, KFT, HbA1c, and biopsy. "
+    "Common medicine names include paracetamol, Dolo, Crocin, ibuprofen, cetirizine, azithromycin, amoxicillin, pantoprazole, and metformin. "
+    "Hindi may be spoken in Devanagari or Romanized Hindi: subah, shaam, raat, din mein do baar, khane ke baad, zaroorat par. "
+    "If speech is unclear, noisy, or absent, return an empty transcript."
 )
 
 
@@ -60,7 +62,6 @@ class NvidiaTranscriptionService:
                 base_url=GROQ_BASE_URL,
             )
             print(f"[ASR] Initialized — engine: Groq Whisper ({GROQ_WHISPER_MODEL})")
-            print(f"[ASR] API Key configured: True (prefix: {self.api_key[:8]}...)")
         else:
             print(f"[ASR] WARNING — GROQ_API_KEY not set. ASR will not work.")
             print(f"[ASR] Set GROQ_API_KEY in backend/.env (free at console.groq.com)")
@@ -84,7 +85,7 @@ class NvidiaTranscriptionService:
     async def transcribe_audio_bytes(
         self,
         audio_bytes: bytes,
-        language: str = "en",
+        language: str = "auto",
         prompt: Optional[str] = None,
     ) -> str:
         """
@@ -162,42 +163,96 @@ class NvidiaTranscriptionService:
             "ru": "ru",
             "ar": "ar",
         }
-        whisper_lang = lang_map.get(language, language)
+        normalized_language = (language or "auto").strip().lower()
+        whisper_lang = lang_map.get(normalized_language, normalized_language)
 
-        result = self._client.audio.transcriptions.create(
+        request_args = dict(
             model=GROQ_WHISPER_MODEL,
             file=audio_file,
-            language=whisper_lang,
             response_format="verbose_json",
             temperature=0.0,
             prompt=prompt or DEFAULT_MEDICAL_PROMPT,
         )
+        # Omitting language lets multilingual Whisper detect Hindi-English
+        # code-switching instead of forcing the entire consultation to English.
+        if whisper_lang not in {"", "auto", "mixed", "hinglish"}:
+            request_args["language"] = whisper_lang
 
-        # verbose_json returns an object with .text
+        result = self._client.audio.transcriptions.create(**request_args)
+
+        # verbose_json returns object with .text and often .segments.
         if isinstance(result, str):
-            return result.strip()
-        text = getattr(result, "text", str(result)).strip()
+            text = result.strip()
+        else:
+            text = getattr(result, "text", "").strip()
+
+        def _seg_val(seg, key):
+            if isinstance(seg, dict):
+                return seg.get(key)
+            return getattr(seg, key, None)
+
+        def _seg_text(seg) -> str:
+            value = _seg_val(seg, "text")
+            return str(value or "").strip()
+
+        segments = getattr(result, "segments", None) if not isinstance(result, str) else None
+        if segments:
+            kept_texts = []
+            for seg in segments:
+                seg_text = _seg_text(seg)
+                if not seg_text:
+                    continue
+
+                no_speech_prob = _seg_val(seg, "no_speech_prob")
+                avg_logprob = _seg_val(seg, "avg_logprob")
+                compression_ratio = _seg_val(seg, "compression_ratio")
+
+                # Conservative confidence gates to suppress junk fragments.
+                if no_speech_prob is not None and float(no_speech_prob) > 0.45:
+                    continue
+                if avg_logprob is not None and float(avg_logprob) < -0.9:
+                    continue
+                if compression_ratio is not None and float(compression_ratio) > 2.2:
+                    continue
+
+                kept_texts.append(seg_text)
+
+            if kept_texts:
+                text = " ".join(kept_texts).strip()
+
+        if not text:
+            return ""
         
-        # Filter out hallucinated silence transcripts & prompt bleed-through
+        # Filter out hallucinated silence transcripts and prompt bleed-through.
         lower_text = text.lower()
         
-        # Only reject if the entire transcript matches these patterns
+        # Only reject if the entire transcript matches these patterns.
         silence_hallucinations = {
             "thank you", "thanks", "you", ".", "..", "...", "thank you.",
             "thanks.", "bye.", "bye"
         }
         
-        # Only reject very short, exact matches to silence hallucinations
+        # Only reject very short, exact matches to silence hallucinations.
         if lower_text.strip().rstrip('.') in silence_hallucinations and len(text) < 15:
             return ""
         
-        # Filter obvious hallucinations but don't be too aggressive
-        if "amara.org" in lower_text or "subtitle by" in lower_text:
+        # Filter obvious hallucinations but don't be too aggressive.
+        if (
+            "amara.org" in lower_text
+            or "subtitle by" in lower_text
+            or "thank you for watching" in lower_text
+            or "please subscribe" in lower_text
+        ):
+            return ""
+
+        filler_tokens = {"uh", "um", "hmm", "huh", "oh", "ah", "er", "mm"}
+        words = [w.strip(".,!?;:'\"()[]{}") for w in lower_text.split() if w.strip()]
+        if words and len(words) <= 5 and all(w in filler_tokens for w in words):
             return ""
             
         return text
 
-    async def transcribe_buffer(self, language: str = "en") -> str:
+    async def transcribe_buffer(self, language: str = "auto") -> str:
         """Transcribe accumulated audio buffer and clear it."""
         if not self._audio_buffer:
             return ""
@@ -238,7 +293,7 @@ class NvidiaTranscriptionService:
 
         return header + pcm_data
 
-    async def transcribe_file(self, file_path: str, language: str = "en") -> str:
+    async def transcribe_file(self, file_path: str, language: str = "auto") -> str:
         """
         Transcribe an audio file.
 

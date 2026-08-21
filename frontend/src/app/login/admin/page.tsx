@@ -1,75 +1,77 @@
 'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import RoleLoginLayout from '../RoleLoginLayout';
 import styles from '../Login.module.css';
 
 export default function AdminLogin() {
-    const [userId, setUserId] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
 
-        // Mock Auth specific to Admin
-        if (userId === 'lorn4' && password === 'Dom341@#') {
-            localStorage.setItem('userRole', 'Admin');
-            localStorage.setItem('userName', 'Super Admin');
-            router.push('/dashboard');
-        } else {
-            setError('Invalid credentials for Super Admin Portal. (Hint: lorn4)');
-        }
-    };
+    if (userId === 'lorn4' && password === 'Dom341@#') {
+      localStorage.setItem('userRole', 'Admin');
+      localStorage.setItem('userName', 'Super Admin');
+      router.push('/dashboard');
+    } else {
+      setError('Invalid credentials for Super Admin Portal. (Hint: lorn4)');
+    }
+  };
 
-    return (
-        <div className={styles.darkLoginPage}>
-            <div className={styles.darkLoginShell}>
-                <div className={styles.darkLoginCard}>
-                    <div className={styles.darkBrand}>
-                        <div className={styles.darkBrandText}>MediScribe <span style={{ color: 'var(--color-accent-green)' }}>AI</span></div>
-                        <h2 className={styles.darkPortalTitle}>Super Admin Portal</h2>
-                    </div>
+  return (
+    <RoleLoginLayout
+      section="Administration"
+      portalName="Super admin"
+      statement="See the system. Shape the standard."
+      detail="Manage staff access, clinic configuration, and operational oversight from one accountable workspace."
+      credentials={<>ID: <strong>lorn4</strong> · Password: <strong>Dom341@#</strong></>}
+    >
+      <form onSubmit={handleLogin} className={styles.darkForm} noValidate>
+            {error && (
+              <div className={styles.darkError} role="alert">
+                {error}
+              </div>
+            )}
 
-                    <form onSubmit={handleLogin} className={styles.darkForm}>
-                        {error && (
-                            <div className={styles.darkError}>
-                                {error}
-                            </div>
-                        )}
-
-                        <div className={styles.darkField}>
-                            <label className={styles.darkLabel}>Admin User ID</label>
-                            <input
-                                autoFocus
-                                value={userId}
-                                onChange={(e) => setUserId(e.target.value)}
-                                className={styles.darkInput}
-                                placeholder="Enter Admin ID"
-                            />
-                        </div>
-
-                        <div className={styles.darkField}>
-                            <label className={styles.darkLabel}>Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={styles.darkInput}
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <button type="submit" className={styles.darkSubmit}>
-                            Access Dashboard
-                        </button>
-                    </form>
-
-                    <div className={styles.darkCredentials}>
-                        Testing Credentials: ID: <b>lorn4</b> | Pass: <b>Dom341@#</b>
-                    </div>
-                </div>
+            <div className={styles.darkField}>
+              <label htmlFor="admin-id" className={styles.darkLabel}>
+                Admin User ID
+              </label>
+              <input
+                id="admin-id"
+                autoFocus
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className={styles.darkInput}
+                placeholder="Enter Admin ID"
+                autoComplete="username"
+              />
             </div>
-        </div>
-    );
+
+            <div className={styles.darkField}>
+              <label htmlFor="admin-password" className={styles.darkLabel}>
+                Password
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={styles.darkInput}
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button type="submit" className={styles.darkSubmit}>
+              Access Dashboard
+            </button>
+      </form>
+    </RoleLoginLayout>
+  );
 }

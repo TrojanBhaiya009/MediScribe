@@ -10,6 +10,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Up
 import asyncio
 import json
 import base64
+import re
+import unicodedata
+from difflib import SequenceMatcher
 from typing import Optional
 from services.nvidia_transcription import get_nvidia_service
 
@@ -22,8 +25,28 @@ MIN_FINAL_CHUNK_SECONDS = 0.3
 FORCE_FLUSH_SECONDS = 6.0
 TRAILING_SILENCE_SECONDS = 0.5
 FRAME_MS = 30
-SPEECH_THRESHOLD = 350
+SPEECH_THRESHOLD = 900
 MAX_CONTEXT_WORDS = 80
+MIN_ACTIVE_FRAMES = 4
+MIN_SPEECH_FRAME_RATIO = 0.12
+MAX_DUPLICATE_SIMILARITY = 0.92
+MAX_LOCAL_DUPLICATE_WORDS = 22
+
+BLOCKED_HALLUCINATION_PHRASES = {
+    "thank you for watching",
+    "thanks for watching",
+    "please subscribe",
+    "subscribe to",
+    "amara.org",
+    "subtitle",
+}
+
+# Tuned for better phrase integrity and fewer micro-chunk hallucinations.
+MIN_CHUNK_SECONDS = 1.5
+MIN_FINAL_CHUNK_SECONDS = 0.6
+TRAILING_SILENCE_SECONDS = 0.7
+MIN_ACTIVE_FRAMES = 8
+MIN_SPEECH_FRAME_RATIO = 0.2
 
 
 def _audio_duration_seconds(audio_bytes: bytes, sample_rate: int) -> float:
@@ -52,7 +75,14 @@ def _iter_levels(audio_bytes: bytes, sample_rate: int):
 
 
 def _contains_speech(audio_bytes: bytes, sample_rate: int) -> bool:
-    return any(level >= SPEECH_THRESHOLD for level in _iter_levels(audio_bytes, sample_rate))
+    levels = list(_iter_levels(audio_bytes, sample_rate))
+    if not levels:
+        return False
+
+    active_frames = [level for level in levels if level >= SPEECH_THRESHOLD]
+    speech_ratio = len(active_frames) / len(levels)
+
+    return len(active_frames) >= MIN_ACTIVE_FRAMES and speech_ratio >= MIN_SPEECH_FRAME_RATIO
 
 
 def _has_trailing_silence(audio_bytes: bytes, sample_rate: int) -> bool:
@@ -84,6 +114,51 @@ def _dedupe_transcript(existing_text: str, new_text: str) -> str:
             break
 
     return cleaned
+
+
+def _normalize_text(text: str) -> str:
+    # Keep letters and numbers from every Unicode script. The previous a-z
+    # filter treated valid Devanagari transcripts as empty hallucinations.
+    normalized_chars = [
+        char.casefold() if char.isalnum() or unicodedata.category(char).startswith("M") or char in {"'", " "} else " "
+        for char in text
+    ]
+    return " ".join("".join(normalized_chars).split())
+
+
+def _looks_repetitive(text: str) -> bool:
+    words = _normalize_text(text).split()
+    if len(words) < 6:
+        return False
+    unique_ratio = len(set(words)) / len(words)
+    return unique_ratio < 0.45
+
+
+def _is_hallucinated_fragment(existing_text: str, new_text: str) -> bool:
+    normalized_new = _normalize_text(new_text)
+    if not normalized_new:
+        return True
+
+    if any(phrase in normalized_new for phrase in BLOCKED_HALLUCINATION_PHRASES):
+        return True
+
+    if _looks_repetitive(normalized_new):
+        return True
+
+    recent_existing = " ".join(existing_text.split()[-MAX_LOCAL_DUPLICATE_WORDS:])
+    normalized_existing = _normalize_text(recent_existing)
+    if not normalized_existing:
+        return False
+
+    similarity = SequenceMatcher(None, normalized_existing, normalized_new).ratio()
+    if similarity >= MAX_DUPLICATE_SIMILARITY:
+        return True
+
+    new_words = normalized_new.split()
+    if len(new_words) <= 5 and normalized_new in normalized_existing:
+        return True
+
+    return False
 
 
 def _recent_context(full_transcript: str) -> str:
@@ -123,7 +198,7 @@ async def websocket_transcription(websocket: WebSocket):
         return
 
     # Connection state
-    language = "en"
+    language = "auto"
     sample_rate = 16000
     audio_buffer = bytearray()
     full_transcript_parts: list[str] = []
@@ -174,11 +249,12 @@ async def websocket_transcription(websocket: WebSocket):
                 transcript = await service.transcribe_audio_bytes(
                     audio_bytes,
                     language,
-                    prompt=service.build_prompt(_recent_context(current_full_transcript())),
+                    # Keep prompt stable for each chunk to avoid context-driven continuations.
+                    prompt=service.build_prompt(),
                 )
 
                 transcript = _dedupe_transcript(current_full_transcript(), transcript)
-                if transcript:
+                if transcript and not _is_hallucinated_fragment(current_full_transcript(), transcript):
                     full_transcript_parts.append(transcript)
                     await websocket.send_json({
                         "type": "transcript",
@@ -187,7 +263,7 @@ async def websocket_transcription(websocket: WebSocket):
                     })
                     print(f"[ASR WS] Sent transcript: '{transcript[:80]}'")
                 else:
-                    print("[ASR WS] Empty transcript returned")
+                    print("[ASR WS] Dropped empty/duplicate/hallucinated transcript")
             except Exception as e:
                 error_msg = str(e)
                 print(f"[ASR WS] Transcription error: {error_msg}")
@@ -220,7 +296,7 @@ async def websocket_transcription(websocket: WebSocket):
                 msg_type = data.get("type")
 
                 if msg_type == "config":
-                    language = data.get("language", "en")
+                    language = data.get("language", "auto")
                     if "-" in language:
                         language = language.split("-")[0]
                     sample_rate = data.get("sampleRate", 16000)

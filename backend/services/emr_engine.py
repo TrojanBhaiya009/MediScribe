@@ -4,7 +4,9 @@ import time
 import requests
 import os
 import logging
+import unicodedata
 from datetime import datetime
+from typing import Any, Optional
 from dotenv import load_dotenv
 from openai import OpenAI
 from services.transcription import ai_settings
@@ -149,7 +151,7 @@ OUTPUT: Structured EMR JSON with confidence tags.
 
 CONFIDENCE RULES (this is the core feature — be precise):
 • "green" — Explicitly stated by doctor or patient. Example: "Sir mein bohot severe headache hai" → chiefComplaint = green.
-• "yellow" — Inferred from context. Example: Doctor says "usual panel bhejdo" for a dengue suspect → you infer NS1 + CBC → investigations = yellow. You MUST add an inferenceNote explaining why.
+• "yellow" — The transcript explicitly mentions an item but its intent is ambiguous and needs doctor confirmation. Never create a medicine, dose, frequency, diagnosis, or investigation that was not spoken.
 • "blank" — Not mentioned at all. Set value to null.
 
 HINGLISH UNDERSTANDING:
@@ -161,10 +163,13 @@ HINGLISH UNDERSTANDING:
 
 EXTRACTION RULES:
 1. Keep the doctor's exact medical terminology. Don't simplify "Sumatriptan 50mg" to "headache medicine".
-2. If dosage is mentioned but frequency is not, mark frequency confidence as "yellow" and infer the standard frequency for that drug.
-3. For disease risk: estimate probability (0.0 – 1.0) based on symptom match. Be conservative — don't inflate.
-4. Only set hallucinationCheck.isHallucinated = true if you invented information NOT present in the transcript.
-5. Extract ALL medications mentioned, even if dosage or frequency are missing. If only the medication name is stated (e.g., 'Paracetamol'), extract it and set dosage/frequency to null.
+2. NEVER infer a standard dose, frequency, duration, route, diagnosis, or investigation. Missing medication attributes must be null.
+3. A symptom is not a diagnosis. Populate diagnosis only when the clinician explicitly states or clearly proposes it (for example "diagnosis is migraine" or "this looks like dengue").
+4. Extract every explicitly mentioned investigation, including CT/CAT scan, MRI, X-ray, USG/ultrasound, ECG/EKG, echo, CBC, LFT, KFT/RFT, HbA1c, glucose, lipid profile, CRP, ESR, TSH/thyroid tests, dengue/NS1, malaria tests, biopsy, and endoscopy.
+5. Understand Hindi and Romanized Hindi quantity/frequency phrases: "दो गोली"/"do goli", "दिन में दो बार"/"din mein do baar", "सुबह शाम"/"subah shaam", "रात को"/"raat ko", "खाने के बाद"/"khane ke baad", and "ज़रूरत पर"/"zaroorat par".
+6. Extract ALL medications mentioned, even if dosage or frequency are missing. If only the medication name is stated, set dosage/frequency to null.
+7. Disease-risk probabilities must remain 0 unless the clinician explicitly discusses that disease or risk. Do not predict disease from symptoms.
+8. hallucinationCheck is not a self-assessment substitute: only transcript-supported facts may appear in the JSON.
 
 Return ONLY this JSON (no text before/after):
 {
@@ -195,11 +200,16 @@ EXTRACTOR_PROMPT_COMPACT = """Extract structured EMR JSON from a consultation tr
 
 Rules:
 - Return JSON only.
-- Use confidence green when explicitly stated, yellow when inferred, blank when absent.
+- Use confidence green when explicitly stated, yellow only when an explicitly mentioned item's intent is ambiguous, blank when absent.
 - Keep medication name, dosage, and frequency exact when present.
 - Set missing values to null and confidence to blank.
 - Only infer followUpDays if the transcript explicitly says follow up / review / come back / return.
 - Extract ALL medications mentioned, even if dosage or frequency are missing. Set missing details to null.
+- Extract every explicitly mentioned investigation, including scans, imaging, blood/urine tests, named lab panels, ECG/echo, biopsy, and endoscopy.
+- Understand English, Devanagari Hindi, and Romanized Hindi medication instructions.
+- Never invent a standard medication dose/frequency or a likely test.
+- Do not convert symptoms into a diagnosis. Diagnosis must be explicitly stated by the clinician.
+- Keep disease-risk probabilities at 0 unless the clinician explicitly discusses the disease/risk.
 
 Return exactly:
 {
@@ -546,8 +556,9 @@ def _clean_text(value: Any) -> Optional[str]:
     if lowered in LOW_SIGNAL_TEXTS:
         return None
 
-    # Reject punctuation-only and symbol-only fragments.
-    if not re.search(r"[a-z0-9]", lowered):
+    # Reject punctuation-only and symbol-only fragments while preserving Hindi
+    # and other Unicode scripts. The former a-z check erased Devanagari fields.
+    if not any(char.isalnum() for char in cleaned):
         return None
 
     # Reject common filler utterances like "uhh", "ummm", "hmmm".
@@ -687,45 +698,302 @@ def _sanitize_emr_shape(emr_data: Any) -> dict:
     return normalized
 
 
-def _extract_simple_medications(transcript: str) -> list[dict]:
-    """Cheap regex fallback so the route stays useful when local LLM calls time out."""
-    meds = []
-    med_pattern = re.compile(
-        r"\b(?:prescribed|started|given|take|taking)\s+([A-Za-z][A-Za-z0-9\s\-]+?)"
-        r"(?:\s+(\d+\s*(?:mg|ml|g|tablets?|doses?|capsules?)))?(?:\s+of)?\s+"
-        r"(once daily|twice daily|thrice daily|three times daily|daily|at night|as needed|prn|once|twice|thrice|morning|evening|night|one dose per night)"
-        r"(?:\s+for\s+(\d+)\s+days?)?",
-        re.IGNORECASE,
+MEDICATION_ALIASES: dict[str, str] = {
+    "paracetamol": "Paracetamol", "acetaminophen": "Paracetamol", "पैरासिटामोल": "Paracetamol",
+    "dolo": "Dolo", "डोलो": "Dolo", "crocin": "Crocin", "क्रोसिन": "Crocin", "calpol": "Calpol",
+    "ibuprofen": "Ibuprofen", "brufen": "Brufen", "combiflam": "Combiflam", "diclofenac": "Diclofenac",
+    "amoxicillin": "Amoxicillin", "azithromycin": "Azithromycin", "doxycycline": "Doxycycline",
+    "cefixime": "Cefixime", "ceftriaxone": "Ceftriaxone", "cetirizine": "Cetirizine",
+    "levocetirizine": "Levocetirizine", "montelukast": "Montelukast", "pantoprazole": "Pantoprazole",
+    "omeprazole": "Omeprazole", "ondansetron": "Ondansetron", "domperidone": "Domperidone",
+    "metformin": "Metformin", "amlodipine": "Amlodipine", "losartan": "Losartan",
+    "atorvastatin": "Atorvastatin", "aspirin": "Aspirin", "sumatriptan": "Sumatriptan", "insulin": "Insulin",
+}
+
+INVESTIGATION_ALIASES: list[tuple[str, str]] = [
+    (r"\b(?:ct|cat)\s*(?:scan)?\b|\bसीटी\s*स्कैन\b", "CT scan"),
+    (r"\bmri(?:\s+scan)?\b|\bएमआरआई\b", "MRI"),
+    (r"\bx[\s-]?ray\b|\bएक्स[\s-]?रे\b", "X-ray"),
+    (r"\b(?:ultrasound|usg|sonography)\b|\bअल्ट्रासाउंड\b", "Ultrasound / USG"),
+    (r"\b(?:ecg|ekg)\b|\bईसीजी\b", "ECG"),
+    (r"\becho(?:cardiogram|cardiography)?\b", "Echocardiogram"),
+    (r"\bcbc\b|\bcomplete blood count\b", "CBC"),
+    (r"\blft\b|\bliver function tests?\b", "LFT"),
+    (r"\b(?:kft|rft)\b|\b(?:kidney|renal) function tests?\b", "KFT / RFT"),
+    (r"\bhba1c\b|\bglycated h[ae]moglobin\b", "HbA1c"),
+    (r"\b(?:fasting|random) (?:blood )?(?:sugar|glucose)\b", "Blood glucose"),
+    (r"\blipid profile\b|\bcholesterol tests?\b", "Lipid profile"),
+    (r"\bcrp\b|\bc-reactive protein\b", "CRP"),
+    (r"\besr\b", "ESR"),
+    (r"\b(?:tsh|thyroid profile|thyroid function tests?)\b", "Thyroid profile / TSH"),
+    (r"\b(?:dengue\s+)?ns1\b|\bdengue tests?\b", "Dengue / NS1 test"),
+    (r"\bmalaria tests?\b|\bperipheral smear\b", "Malaria test"),
+    (r"\b(?:urine test|urinalysis|urine routine)\b", "Urine test"),
+    (r"\b(?:blood test|blood work|lab tests?|labs)\b", "Blood tests"),
+    (r"\bbiopsy\b|\bबायोप्सी\b", "Biopsy"),
+    (r"\bendoscop(?:y|ic)\b|\bएंडोस्कोपी\b", "Endoscopy"),
+]
+
+NUMBER_TOKEN = r"(?:\d+(?:\.\d+)?|one|two|three|four|five|half|ek|do|teen|aadha|aadhi|एक|दो|तीन|चार|पांच|आधा|आधी)"
+DOSE_UNIT = r"(?:mg|milligrams?|मिलीग्राम|ml|milliliters?|मिलीलीटर|mcg|micrograms?|g|grams?|tablets?|tabs?|capsules?|doses?|गोली|गोलियां|खुराक)"
+DOSAGE_PATTERN = re.compile(rf"(?<!\w){NUMBER_TOKEN}\s*{DOSE_UNIT}(?!\w)", re.IGNORECASE)
+
+FREQUENCY_PATTERNS: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"\b(?:once daily|once a day|od)\b|\b(?:din mein |दिन में )?(?:ek|एक) baar\b", re.I), "Once daily (OD)"),
+    (re.compile(r"\b(?:twice daily|twice a day|two times (?:daily|a day)|bd|bid|subah shaam|din mein do baar)\b|दिन में दो बार|सुबह शाम", re.I), "Twice daily (BD)"),
+    (re.compile(r"\b(?:thrice daily|three times (?:daily|a day)|tds|tid|din mein teen baar)\b|दिन में तीन बार", re.I), "Three times daily (TDS)"),
+    (re.compile(r"\b(?:at night|every night|nightly|raat ko|one dose per night)\b|रात को", re.I), "At night"),
+    (re.compile(r"\b(?:in the morning|every morning|subah)\b|सुबह", re.I), "In the morning"),
+    (re.compile(r"\b(?:as needed|when needed|prn|sos|zarurat par|zaroorat par|zaroorat padne par)\b|ज़रूरत पर|जरूरत पर", re.I), "As needed (PRN)"),
+    (re.compile(r"\b(?:after food|after meals?|khane ke baad)\b|खाने के बाद", re.I), "After food"),
+    (re.compile(r"\b(?:before food|before meals?|khane se pehle|empty stomach|khali pet)\b|खाने से पहले|खाली पेट", re.I), "Before food / empty stomach"),
+]
+
+
+def _compact_text(value: str) -> str:
+    return "".join(
+        char.casefold()
+        for char in value
+        if char.isalnum() or unicodedata.category(char).startswith("M")
     )
 
-    frequency_map = {
-        "once daily": "Once daily",
-        "twice daily": "Twice daily (BD)",
-        "thrice daily": "Three times daily (TDS)",
-        "three times daily": "Three times daily (TDS)",
-        "daily": "Daily",
-        "at night": "At night",
-        "as needed": "As needed (PRN)",
-        "prn": "As needed (PRN)",
-    }
 
-    for match in med_pattern.finditer(transcript):
-        name = " ".join(match.group(1).split())
-        dosage = match.group(2).strip() if match.group(2) else None
-        frequency_key = match.group(3).strip().lower() if match.group(3) else None
-        
-        freq_value = frequency_map.get(frequency_key, frequency_key) if frequency_key else None
-        
-        meds.append(
-            {
-                "name": name,
-                "dosage": dosage,
-                "frequency": freq_value,
-                "confidence": "green",
-            }
+def _medication_key(value: str) -> str:
+    compact = _compact_text(value)
+    paracetamol_family = {
+        _compact_text(name) for name in ("Paracetamol", "Acetaminophen", "Dolo", "Crocin", "Calpol", "पैरासिटामोल", "डोलो", "क्रोसिन")
+    }
+    return "paracetamol" if compact in paracetamol_family else compact
+
+
+def _investigation_key(value: str) -> str:
+    for pattern_text, canonical_name in INVESTIGATION_ALIASES:
+        if re.search(pattern_text, value, re.IGNORECASE):
+            return _compact_text(canonical_name)
+    return _compact_text(value)
+
+
+def _context_window(text: str, start: int, end: int, radius: int = 90) -> str:
+    left = max(0, start - radius)
+    right = min(len(text), end + radius)
+    return text[left:right]
+
+
+def _nearest_match(pattern: re.Pattern, context: str, pivot: int) -> Optional[re.Match]:
+    matches = list(pattern.finditer(context))
+    if not matches:
+        return None
+    return min(matches, key=lambda match: abs(((match.start() + match.end()) // 2) - pivot))
+
+
+def _extract_simple_medications(transcript: str) -> list[dict]:
+    """Extract transcript-grounded medicines and spoken instructions.
+
+    This deterministic pass supplements the LLM and remains intentionally
+    conservative: it never supplies a standard dose or frequency.
+    """
+    if not transcript or not transcript.strip():
+        return []
+
+    alias_pattern = re.compile(
+        "|".join(sorted((re.escape(alias) for alias in MEDICATION_ALIASES), key=len, reverse=True)),
+        re.IGNORECASE,
+    )
+    medications: list[dict] = []
+    seen: set[str] = set()
+    candidates: list[tuple[int, int, str]] = []
+
+    for match in alias_pattern.finditer(transcript):
+        canonical_name = MEDICATION_ALIASES.get(match.group(0).casefold())
+        if canonical_name:
+            candidates.append((match.start(), match.end(), canonical_name))
+
+    # Recover unfamiliar generic/brand names when speech includes strong
+    # prescription evidence (a strength, "doses of", or an action verb).
+    generic_patterns = [
+        re.compile(rf"(?P<name>[A-Za-z][A-Za-z0-9-]{{2,}})\s+{NUMBER_TOKEN}\s*{DOSE_UNIT}", re.I),
+        re.compile(rf"{NUMBER_TOKEN}\s*{DOSE_UNIT}\s+(?:of\s+)?(?P<name>[A-Za-z][A-Za-z0-9-]{{2,}})", re.I),
+        re.compile(r"\b(?:prescribe|prescribed|start|started|take|continue|give|given|use|lena|lene|lo)\s+(?:tab(?:let)?\s+|capsule\s+)?(?P<name>[A-Za-z][A-Za-z0-9-]{2,})\b", re.I),
+    ]
+    generic_stopwords = {
+        "the", "this", "that", "some", "medicine", "medicines", "medication", "medications", "tablet", "capsule", "dose", "doses",
+        "daily", "twice", "thrice", "morning", "night", "food", "rest", "water", "care",
+        "one", "two", "three", "four", "five", "half", "ek", "do", "teen",
+    }
+    for pattern in generic_patterns:
+        for match in pattern.finditer(transcript):
+            raw_name = match.group("name")
+            if raw_name.casefold() in generic_stopwords:
+                continue
+            canonical_name = MEDICATION_ALIASES.get(raw_name.casefold(), raw_name.title())
+            name_start, name_end = match.span("name")
+            candidates.append((name_start, name_end, canonical_name))
+
+    for start, end, canonical_name in sorted(candidates, key=lambda item: item[0]):
+        medication_key = _medication_key(canonical_name)
+        if not canonical_name or medication_key in seen:
+            continue
+
+        context = _context_window(transcript, start, end)
+        pivot = start - max(0, start - 90)
+
+        # Do not turn an explicitly avoided/allergic medicine into an Rx item.
+        prefix = transcript[max(0, start - 42):start].casefold()
+        if re.search(r"(?:do not take|don't take|avoid|allergic to|allergy to|मत (?:लेना|लीजिए)|नहीं लेना)", prefix):
+            continue
+
+        dosage_match = _nearest_match(DOSAGE_PATTERN, context, pivot)
+        dosage = dosage_match.group(0).strip() if dosage_match else None
+
+        frequency = None
+        for pattern, canonical_frequency in FREQUENCY_PATTERNS:
+            if pattern.search(context):
+                frequency = canonical_frequency
+                break
+
+        duration_match = re.search(
+            rf"\b(?:for\s+)?({NUMBER_TOKEN})\s+(?:days?|din)\b|((?:एक|दो|तीन|चार|पांच|\d+))\s+दिन(?:\s+तक)?",
+            context,
+            re.IGNORECASE,
+        )
+        if duration_match:
+            duration = duration_match.group(0).strip()
+            frequency = f"{frequency}; {duration}" if frequency else duration
+
+        seen.add(medication_key)
+        medications.append({
+            "name": canonical_name,
+            "dosage": dosage,
+            "frequency": frequency,
+            "confidence": "green",
+        })
+
+    return medications
+
+
+def _extract_simple_investigations(transcript: str) -> list[dict]:
+    """Surface explicitly mentioned tests; ambiguous intent is yellow."""
+    if not transcript or not transcript.strip():
+        return []
+
+    order_cues = re.compile(
+        r"\b(?:order|ordered|advise|advised|recommend|recommended|get|do|book|schedule|send|needs?|karwa|karaye|karao|bhej|likh)\w*\b|"
+        r"करवा|कराइए|कराएं|जांच|जाँच|लिख|भेज",
+        re.IGNORECASE,
+    )
+    found: list[dict] = []
+    seen: set[str] = set()
+    for pattern_text, canonical_name in INVESTIGATION_ALIASES:
+        pattern = re.compile(pattern_text, re.IGNORECASE)
+        for match in pattern.finditer(transcript):
+            if canonical_name.casefold() in seen:
+                continue
+            context = _context_window(transcript, match.start(), match.end(), radius=70)
+            explicit_order = bool(order_cues.search(context))
+            found.append({
+                "name": canonical_name,
+                "confidence": "green" if explicit_order else "yellow",
+            })
+            seen.add(canonical_name.casefold())
+    return found
+
+
+def _entity_supported(value: Optional[str], transcript: str) -> bool:
+    if not value:
+        return False
+    compact_value = _compact_text(value)
+    compact_transcript = _compact_text(transcript)
+    if compact_value and compact_value in compact_transcript:
+        return True
+
+    value_tokens = {token.casefold() for token in re.findall(r"\w+", value, re.UNICODE) if len(token) > 2}
+    transcript_tokens = {token.casefold() for token in re.findall(r"\w+", transcript, re.UNICODE)}
+    if not value_tokens:
+        return False
+    return len(value_tokens & transcript_tokens) / len(value_tokens) >= 0.6
+
+
+def _apply_transcript_grounding(emr_data: dict, transcript: str) -> dict:
+    """Reconcile probabilistic extraction with deterministic transcript evidence."""
+    removed: list[str] = []
+    explicit_meds = _extract_simple_medications(transcript)
+    explicit_investigations = _extract_simple_investigations(transcript)
+
+    grounded_meds: list[dict] = []
+    consumed_meds: set[str] = set()
+    for med in emr_data.get("medications", []):
+        name = med.get("name")
+        matching = next((item for item in explicit_meds if _medication_key(item["name"]) == _medication_key(str(name))), None)
+        if matching:
+            if _medication_key(matching["name"]) in consumed_meds:
+                continue
+            grounded_meds.append(matching)
+            consumed_meds.add(_medication_key(matching["name"]))
+            continue
+        if not _entity_supported(name, transcript):
+            removed.append(f"medication '{name}'")
+            continue
+
+        grounded = dict(med)
+        if grounded.get("dosage") and not _entity_supported(grounded["dosage"], transcript):
+            removed.append(f"unsupported dosage for '{name}'")
+            grounded["dosage"] = None
+            grounded["confidence"] = "yellow"
+        if grounded.get("frequency") and not _entity_supported(grounded["frequency"], transcript):
+            removed.append(f"unsupported frequency for '{name}'")
+            grounded["frequency"] = None
+            grounded["confidence"] = "yellow"
+        grounded_meds.append(grounded)
+
+    grounded_meds.extend(item for item in explicit_meds if _medication_key(item["name"]) not in consumed_meds)
+    emr_data["medications"] = grounded_meds
+
+    grounded_investigations: list[dict] = []
+    consumed_investigations: set[str] = set()
+    for investigation in emr_data.get("investigations", []):
+        name = investigation.get("name")
+        matching = next((item for item in explicit_investigations if _investigation_key(item["name"]) == _investigation_key(str(name))), None)
+        if matching:
+            if _investigation_key(matching["name"]) in consumed_investigations:
+                continue
+            grounded_investigations.append(matching)
+            consumed_investigations.add(_investigation_key(matching["name"]))
+        elif _entity_supported(name, transcript):
+            grounded_investigations.append(investigation)
+        else:
+            removed.append(f"investigation '{name}'")
+
+    grounded_investigations.extend(
+        item for item in explicit_investigations if _investigation_key(item["name"]) not in consumed_investigations
+    )
+    emr_data["investigations"] = grounded_investigations
+
+    diagnosis = emr_data.get("diagnosis", {})
+    if diagnosis.get("value") and not _entity_supported(diagnosis.get("value"), transcript):
+        removed.append(f"diagnosis '{diagnosis.get('value')}'")
+        emr_data["diagnosis"] = {"value": None, "confidence": "blank"}
+
+    ambiguous_tests = [item["name"] for item in explicit_investigations if item["confidence"] == "yellow"]
+    if ambiguous_tests:
+        emr_data.setdefault("inferenceNotes", []).append(
+            "Transcript mentioned these tests without a clear order; doctor confirmation required: " + ", ".join(ambiguous_tests)
         )
 
-    return meds
+    existing_check = emr_data.get("hallucinationCheck", {})
+    prior_details = existing_check.get("details") if isinstance(existing_check, dict) else None
+    if removed:
+        detail = "Grounding removed or cleared unsupported output: " + "; ".join(removed)
+        if prior_details:
+            detail = f"{prior_details}; {detail}"
+        emr_data["hallucinationCheck"] = {"isHallucinated": True, "details": detail}
+        emr_data.setdefault("inferenceNotes", []).append(detail)
+    else:
+        emr_data["hallucinationCheck"] = {
+            "isHallucinated": bool(existing_check.get("isHallucinated", False)) if isinstance(existing_check, dict) else False,
+            "details": prior_details,
+        }
+
+    return emr_data
 
 
 def _build_fast_fallback_emr(transcript: str, error: Exception) -> dict:
@@ -741,25 +1009,20 @@ def _build_fast_fallback_emr(transcript: str, error: Exception) -> dict:
         cleaned_transcript,
         re.IGNORECASE,
     )
-    symptoms = []
-    symptom_keywords = ("fever", "body ache", "headache", "cough", "cold", "pain", "vomiting", "nausea")
-    lowered = cleaned_transcript.lower()
-
-    for symptom in symptom_keywords:
-        if symptom in lowered:
-            symptoms.append(symptom)
-
     if first_sentence:
         emr["chiefComplaint"] = {"value": first_sentence, "confidence": "green"}
         emr["hpi"] = {"value": cleaned_transcript, "confidence": "green"}
 
-    if symptoms:
-        emr["diagnosis"] = {"value": ", ".join(symptoms), "confidence": "yellow"}
-        emr["inferenceNotes"].append("Fast fallback inferred a tentative diagnosis from keywords in the transcript.")
+    # Symptoms belong in the history. A fallback must never promote them into
+    # a diagnosis unless a clinician explicitly supplied one.
 
     medications = _extract_simple_medications(cleaned_transcript)
     if medications:
         emr["medications"] = medications
+
+    investigations = _extract_simple_investigations(cleaned_transcript)
+    if investigations:
+        emr["investigations"] = investigations
 
     if follow_up_match:
         emr["followUpDays"] = {"value": int(follow_up_match.group(1)), "confidence": "yellow"}
@@ -829,6 +1092,7 @@ def generate_emr_from_transcript(transcript: str) -> dict:
         emr_data = _build_fast_fallback_emr(transcript, e)
 
     emr_data = _sanitize_emr_shape(emr_data)
+    emr_data = _apply_transcript_grounding(emr_data, transcript)
 
     agent1_time = time.time() - start
     logger.info(f"[Pipeline] Agent 1 completed in {agent1_time:.1f}s")
@@ -839,7 +1103,7 @@ def generate_emr_from_transcript(transcript: str) -> dict:
         safety_result = _get_default_safety()
         total_time = time.time() - start
         emr_data["safetyCheck"] = safety_result
-        emr_data["pipelineVersion"] = "3-agent-v1.1"
+        emr_data["pipelineVersion"] = "3-agent-v1.2-grounded"
         emr_data["agentsCompleted"] = ["extractor"]
         emr_data["pipelineTimeSecs"] = round(total_time, 1)
         logger.info(f"[Pipeline] Complete in {total_time:.1f}s | Safety: {safety_result.get('overallSafetyStatus', 'unknown')}")
@@ -866,7 +1130,7 @@ def generate_emr_from_transcript(transcript: str) -> dict:
 
     # Merge into final response
     emr_data["safetyCheck"] = safety_result
-    emr_data["pipelineVersion"] = "3-agent-v1.1"
+    emr_data["pipelineVersion"] = "3-agent-v1.2-grounded"
     emr_data["agentsCompleted"] = ["extractor", "safety_checker"]
     emr_data["pipelineTimeSecs"] = round(total_time, 1)
 

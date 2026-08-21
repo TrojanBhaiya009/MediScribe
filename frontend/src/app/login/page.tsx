@@ -1,50 +1,60 @@
-'use client';
-import React, { type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { PORTALS } from './portals.config';
 import styles from './Login.module.css';
 
+function PortalCard({ portal }: { portal: typeof PORTALS[number] }) {
+  return (
+    <article className={styles.card}>
+      <Link href={portal.href} className={styles.cardLink} aria-label={`${portal.cta}: ${portal.title}`}>
+        <span className={styles.portalNumber} aria-hidden="true">{portal.number}</span>
+        <span className={styles.cardHeader}>
+          <span className={styles.title}>{portal.title}</span>
+          <span className={styles.desc}>{portal.desc}</span>
+        </span>
+        <span className={styles.arrow} aria-hidden="true">→</span>
+      </Link>
+    </article>
+  );
+}
+
 export default function LoginPage() {
-    const router = useRouter();
+  return (
+    <main className={styles.page}>
+      <header className={styles.topbar}>
+        <Link href="/" className={styles.brand} aria-label="MediScribe home">
+          <span className={styles.logoText}>
+            MediScribe
+          </span>
+          <span className={styles.logoAccent}>AI</span>
+        </Link>
+        <p className={styles.topbarNote}>Staff access directory · India</p>
+      </header>
 
-    const portals = [
-        { id: 'receptionist', title: 'Reception & Intake', icon: '📝', path: '/login/receptionist', desc: 'Patient registration and queue management.', color: '#3b82f6' },
-        { id: 'doctor', title: 'Doctor Portal', icon: '🩺', path: '/login/doctor', desc: 'Live AI Scribe and EMR review workspace.', color: '#10b981' },
-        { id: 'pharmacist', title: 'Pharmacy Dispatch', icon: '💊', path: '/login/pharmacist', desc: 'Secure prescription and patient handover.', color: '#f59e0b' },
-        { id: 'admin', title: 'Super Admin', icon: '📊', path: '/login/admin', desc: 'Clinic oversight and system configuration.', color: '#8b5cf6' },
-    ];
+      <div className={styles.loginLayout}>
+        <section className={styles.intro} aria-labelledby="login-heading">
+          <p className={styles.eyebrow}>MediScribe clinical operations</p>
+          <h1 id="login-heading" className={styles.headline}>
+            The right desk,<br />the right <em>tools.</em>
+          </h1>
+          <p className={styles.subheadline}>
+            Choose your role to enter the workspace assigned to your clinical responsibilities.
+          </p>
+          <div className={styles.introMeta}>
+            <span>Four protected<br />staff environments</span>
+            <span>ABDM-ready<br />clinical workflows</span>
+          </div>
+        </section>
 
-    return (
-        <main className={styles.portalLanding}>
-            <div className={styles.portalHeader}>
-                <div className={styles.brandHeader} style={{ justifyContent: 'center', marginBottom: '16px' }}>
-                    <span className={styles.logoIcon} style={{ fontSize: '32px' }}>☤</span>
-                    <h1 className={styles.logoText} style={{ fontSize: '32px', color: 'var(--color-text-primary)' }}>
-                        MediScribe <span style={{ color: 'var(--color-accent-green)' }}>AI</span>
-                    </h1>
-                </div>
-                <h2 className={styles.portalSubTitle}>Select your designated access portal</h2>
-            </div>
-
-            <div className={styles.portalGrid}>
-                {portals.map(portal => (
-                    <button
-                        key={portal.id}
-                        onClick={() => router.push(portal.path)}
-                        className={styles.portalCard}
-                        style={{ '--portal-accent': portal.color } as CSSProperties}
-                    >
-                        <div className={styles.portalIconWrap}>
-                            {portal.icon}
-                        </div>
-                        <h3 className={styles.portalTitle}>{portal.title}</h3>
-                        <p className={styles.portalDesc}>{portal.desc}</p>
-                    </button>
-                ))}
-            </div>
-
-            <div className={styles.portalNotice}>
-                <span className={styles.lockIcon}>🔒</span> Secure, ABDM Compliant System Access
-            </div>
-        </main>
-    );
+        <section className={styles.portalPanel} aria-labelledby="portal-heading">
+          <p className={styles.portalKicker}>Access directory</p>
+          <h2 id="portal-heading" className={styles.portalHeading}>Select your workspace</h2>
+          <div className={styles.grid} aria-label="Access portals">
+            {PORTALS.map((portal) => (
+              <PortalCard key={portal.id} portal={portal} />
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
