@@ -231,7 +231,7 @@ export const sharingApi = {
     request<any>(`/sharing/${shareToken}`, { method: 'DELETE' }),
 };
 
-// ─── NVIDIA ASR (Parakeet) ───────────────────────────────────────────────────
+// ─── NVIDIA ASR (Riva Whisper) ───────────────────────────────────────────────────
 
 export const nvidiaAsrApi = {
   /** Check if NVIDIA ASR service is available */

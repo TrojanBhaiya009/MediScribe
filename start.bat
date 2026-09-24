@@ -19,6 +19,11 @@ REM ── 1. Start Backend ─────────────────�
 echo.
 echo  [1/2] Starting Backend (FastAPI)...
 
+REM Install/update Python dependencies including nvidia-riva-client
+cd /d "%~dp0backend"
+echo   [!!] Installing Python dependencies (including NVIDIA Riva client)...
+pip install -q -r requirements.txt
+
 start "MediScribe-Backend" cmd /k "cd /d "%~dp0backend" && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 
 echo   [OK] Backend starting on http://localhost:8000

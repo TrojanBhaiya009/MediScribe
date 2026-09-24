@@ -122,6 +122,7 @@ def seed_users_and_doctors(session: Session):
 
     user_rows = [
         ("lorn2", "Dom341@#", "Dr. Rajesh Sharma", UserRole.DOCTOR, doctor_by_username["lorn2"].id),
+        ("docN" , "Nj@009" , "Dr.Nayan" , UserRole.DOCTOR, doctor_by_username["docN"].id),
         ("doc2", "DocPass2!", "Dr. Anjali Gupta", UserRole.DOCTOR, doctor_by_username["doc2"].id),
         ("doc3", "DocPass3!", "Dr. Vikram Singh", UserRole.DOCTOR, doctor_by_username["doc3"].id),
         ("pharma1", "Pharma123!", "Sunil Kumar", UserRole.PHARMACIST, None),

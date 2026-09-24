@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Optional
 from dotenv import load_dotenv
 from openai import OpenAI
-from services.transcription import ai_settings
+from services.riva_translate import get_riva_translate_client
 
 load_dotenv()
 
@@ -345,7 +345,28 @@ Return ONLY this JSON:
   }
 }"""
 
+HINDI_SUMMARIZER_PROMPT_COMPACT = """Generate patient-facing Hinglish summary from approved EMR.
 
+Output JSON only:
+{
+  "patientSummary": {
+    "diagnosisSimple": "Devanagari Hindi + English term explanation",
+    "medicationInstructions": [{"name": "Medicine", "hindiInstruction": "Devanagari timing/dose", "warning": "Devanagari warning or null"}],
+    "followUpNote": "Devanagari follow-up",
+    "generalAdvice": "Devanagari lifestyle/diet"
+  }
+}
+
+Rules:
+- Hindi in Devanagari script. English medical terms kept but explained.
+- "Sumatriptan 50mg PRN" → "Sumatriptan 50mg — जब दर्द शुरू हो तब एक गोली लें"
+- "Follow up in 7 days" → "7 दिन बाद दोबारा आएं"
+- Short: understandable in 30 seconds at pharmacy counter.
+"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LLM CALL HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 # LLM CALL HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1140,13 +1161,15 @@ def generate_emr_from_transcript(transcript: str) -> dict:
 
 def generate_hindi_summary(approved_emr: dict) -> dict:
     """
-    AGENT 3 — Hindi Summarizer.
+    AGENT 3 — Hindi Summarizer (Hybrid: LLM English + Riva Translate).
     Called ONLY after doctor approval (commit-on-approval).
+    Pipeline: LLM generates English summary → Riva Translate → Hindi JSON
+    Fallback: Google Translate → LLM Hindi direct
     """
     logger.info("[Pipeline] Agent 3 — Generating patient-facing Hindi summary...")
     start = time.time()
 
-    # Only send relevant fields to Agent 3 (no need for hallucinationCheck etc.)
+    # Only send relevant fields to Agent 3
     summary_input = {
         "diagnosis": approved_emr.get("diagnosis", {}),
         "medications": approved_emr.get("medications", []),
@@ -1155,20 +1178,144 @@ def generate_hindi_summary(approved_emr: dict) -> dict:
         "allergies": approved_emr.get("allergies", {}),
     }
 
+    # Step 1: Generate English summary using LLM
+    english_summary = None
+    try:
+        prompt = _get_prompt_variant(HINDI_SUMMARIZER_PROMPT, HINDI_SUMMARIZER_PROMPT_COMPACT)
+        english_summary = _call_llm(
+            prompt,
+            f"APPROVED EMR:\n\n{json.dumps(summary_input, indent=2, ensure_ascii=False)}"
+        )
+        logger.info("[Pipeline] Agent 3 — English summary generated")
+    except Exception as e:
+        logger.warning(f"[Pipeline] Agent 3 — English generation failed: {e}")
+
+    if not english_summary:
+        logger.error("[Pipeline] Agent 3 — No English summary, using fallback")
+        return _fallback_hindi_summary()
+
+    # Step 2: Translate to Hindi using Riva Translate
+    try:
+        riva_client = get_riva_translate_client()
+        if riva_client.is_available():
+            hindi_summary = _translate_summary_with_riva(riva_client, english_summary)
+            if hindi_summary:
+                logger.info(f"[Pipeline] Agent 3 completed via Riva Translate in {time.time() - start:.1f}s")
+                return hindi_summary
+            else:
+                logger.warning("[Pipeline] Agent 3 — Riva Translate returned empty, trying Google Translate")
+        else:
+            logger.warning("[Pipeline] Agent 3 — Riva Translate not available, trying Google Translate")
+    except Exception as e:
+        logger.warning(f"[Pipeline] Agent 3 — Riva Translate failed: {e}")
+
+    # Step 3: Fallback to Google Translate (existing hindi_emr.py)
+    try:
+        from services.hindi_emr import emr_to_hindi
+        # Convert English summary to the expected format for hindi_emr
+        hindi_summary = emr_to_hindi(english_summary)
+        # Ensure output format matches expected structure
+        if "patientSummary" not in hindi_summary:
+            hindi_summary = _restructure_to_patient_summary(hindi_summary)
+        logger.info(f"[Pipeline] Agent 3 completed via Google Translate in {time.time() - start:.1f}s")
+        return hindi_summary
+    except Exception as e:
+        logger.warning(f"[Pipeline] Agent 3 — Google Translate failed: {e}")
+
+    # Step 4: Final fallback - direct LLM Hindi generation (old behavior)
     try:
         result = _call_llm(
             HINDI_SUMMARIZER_PROMPT,
             f"APPROVED EMR:\n\n{json.dumps(summary_input, indent=2, ensure_ascii=False)}"
         )
-        logger.info(f"[Pipeline] Agent 3 completed in {time.time() - start:.1f}s")
+        logger.info(f"[Pipeline] Agent 3 completed via LLM Hindi in {time.time() - start:.1f}s")
         return result
     except Exception as e:
-        logger.error(f"[Pipeline] Agent 3 FAILED: {e}")
-        return {
-            "patientSummary": {
-                "diagnosisSimple": "Summary generation failed — please explain verbally.",
-                "medicationInstructions": [],
-                "followUpNote": "",
-                "generalAdvice": ""
-            }
+        logger.error(f"[Pipeline] Agent 3 FAILED — all methods: {e}")
+
+    return _fallback_hindi_summary()
+
+
+def _translate_summary_with_riva(riva_client, english_summary: dict) -> Optional[dict]:
+    """Translate English summary fields to Hindi using Riva Translate."""
+    try:
+        # Fields that need translation in the patientSummary structure
+        patient_summary = english_summary.get("patientSummary", {})
+        if not patient_summary:
+            return None
+
+        translated = dict(patient_summary)
+
+        # Translate diagnosisSimple
+        if translated.get("diagnosisSimple"):
+            translated["diagnosisSimple"] = riva_client.translate(
+                translated["diagnosisSimple"], "en", "hi"
+            )
+
+        # Translate medicationInstructions
+        if translated.get("medicationInstructions"):
+            for med in translated["medicationInstructions"]:
+                if med.get("hindiInstruction"):
+                    med["hindiInstruction"] = riva_client.translate(
+                        med["hindiInstruction"], "en", "hi"
+                    )
+                if med.get("warning"):
+                    med["warning"] = riva_client.translate(
+                        med["warning"], "en", "hi"
+                    )
+
+        # Translate followUpNote
+        if translated.get("followUpNote"):
+            translated["followUpNote"] = riva_client.translate(
+                translated["followUpNote"], "en", "hi"
+            )
+
+        # Translate generalAdvice
+        if translated.get("generalAdvice"):
+            translated["generalAdvice"] = riva_client.translate(
+                translated["generalAdvice"], "en", "hi"
+            )
+
+        return {"patientSummary": translated}
+
+    except Exception as e:
+        logger.error(f"[Pipeline] Riva translation of summary failed: {e}")
+        return None
+
+
+def _fallback_hindi_summary() -> dict:
+    """Final fallback when all translation methods fail."""
+    return {
+        "patientSummary": {
+            "diagnosisSimple": "सारांश बनाने में त्रुटि — कृपया मौखिक रूप से समझाएं।",
+            "medicationInstructions": [],
+            "followUpNote": "",
+            "generalAdvice": ""
         }
+    }
+
+
+def _extract_value(field: Any) -> str:
+    """Extract string value from confidence-tagged field or plain string."""
+    if isinstance(field, dict):
+        return field.get("value", "") or ""
+    return str(field) if field else ""
+
+
+def _restructure_to_patient_summary(data: dict) -> dict:
+    """Restructure hindi_emr output to match patientSummary format."""
+    return {
+        "patientSummary": {
+            "diagnosisSimple": _extract_value(data.get("diagnosis")),
+            "medicationInstructions": [
+                {
+                    "name": _extract_value(med.get("name")) if isinstance(med, dict) else str(med),
+                    "hindiInstruction": _extract_value(med.get("frequency")) if isinstance(med, dict) else "",
+                    "warning": None
+                }
+                for med in data.get("medications", [])
+            ],
+            "followUpNote": f"{_extract_value(data.get('followUpDays', {}).get('value'))} दिन बाद दोबारा आएं" if _extract_value(data.get("followUpDays", {}).get("value")) else "",
+            "generalAdvice": _extract_value(data.get("plan"))
+        }
+    }

@@ -175,7 +175,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
     const [isRecording, setIsRecording] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const [showPatientList, setShowPatientList] = useState(false);
-    const [asrProvider, setAsrProvider] = useState<ASRProvider>('nvidia-parakeet');
+    const [asrProvider, setAsrProvider] = useState<ASRProvider>('nvidia-riva-whisper');
     const [showAsrDropdown, setShowAsrDropdown] = useState(false);
     const recognitionRef = useRef<any>(null);
     const activePatientIdRef = useRef(activePatientId);
@@ -283,9 +283,9 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                 wantRecordingRef.current = false; setIsRecording(false);
             } else if (event.error === 'network') {
                 if (isBraveBrowser.current) {
-                    alert("Web Speech API is blocked by Brave's privacy settings.\n\nFix options:\n1. Use Server ASR (Groq Whisper) instead (select from dropdown)\n2. Or open brave://settings/privacy and enable 'Use Google services for push messaging'\n3. Or use Chrome browser for Web Speech");
+                    alert("Web Speech API is blocked by Brave's privacy settings.\n\nFix options:\n1. Use Server ASR (NVIDIA Riva Whisper) instead (select from dropdown)\n2. Or open brave://settings/privacy and enable 'Use Google services for push messaging'\n3. Or use Chrome browser for Web Speech");
                 } else {
-                    alert("Network error. Web Speech API requires internet connection.\nIf using Brave browser, it blocks Google speech servers by default.\n\nTry using Server ASR (Groq Whisper) instead.");
+                    alert("Network error. Web Speech API requires internet connection.\nIf using Brave browser, it blocks Google speech servers by default.\n\nTry using Server ASR (NVIDIA Riva Whisper) instead.");
                 }
                 wantRecordingRef.current = false; setIsRecording(false);
             } else if (event.error === 'audio-capture') {
@@ -295,7 +295,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                 // Silently handle aborted — usually from user stopping
                 wantRecordingRef.current = false; setIsRecording(false);
             } else if (event.error === 'service-not-available') {
-                alert("Speech recognition service not available.\nTry using Server ASR (Groq Whisper) instead (select from dropdown).");
+                alert("Speech recognition service not available.\nTry using Server ASR (NVIDIA Riva Whisper) instead (select from dropdown).");
                 wantRecordingRef.current = false; setIsRecording(false);
             }
         };
@@ -357,15 +357,15 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
             return;
         }
 
-        // Handle Server ASR (Groq Whisper)
-        if (asrProvider === 'nvidia-parakeet') {
+        // Handle Server ASR (NVIDIA Riva Whisper)
+        if (asrProvider === 'nvidia-riva-whisper') {
             if (isRecording) {
                 nvidiaASR.stopRecording();
             } else {
                 if (nvidiaASR.isAvailable) {
                     nvidiaASR.startRecording();
                 } else {
-                    alert("Server ASR not available. Check backend connection and GROQ_API_KEY.");
+                    alert("Server ASR not available. Check backend connection and NVIDIA_API_KEY.");
                 }
             }
             return;
@@ -382,7 +382,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                 const useBrave = confirm(
                     "⚠️ Brave browser blocks Web Speech API by default.\n\n" +
                     "Options:\n" +
-                    "• Click 'Cancel' and switch to Server ASR / Groq Whisper (recommended)\n" +
+                    "• Click 'Cancel' and switch to Server ASR / NVIDIA Riva Whisper (recommended)\n" +
                     "• Click 'OK' to try anyway (may fail with network error)\n\n" +
                     "To fix permanently: brave://settings/privacy → enable Google services"
                 );
@@ -408,7 +408,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                 try { wantRecordingRef.current = true; recognitionRef.current.start(); setIsRecording(true); }
                 catch { wantRecordingRef.current = false; }
             } else {
-                alert("Speech recognition not supported in this browser.\n\nOptions:\n• Use Server ASR / Groq Whisper (select from dropdown)\n• Use Chrome or Edge browser for Web Speech API");
+                alert("Speech recognition not supported in this browser.\n\nOptions:\n• Use Server ASR / NVIDIA Riva Whisper (select from dropdown)\n• Use Chrome or Edge browser for Web Speech API");
             }
         }
     };
@@ -546,7 +546,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                     {isRecording && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 'bold', fontSize: '13px', animation: `${styles.pulse} 2s infinite` }}>
                             <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}></div>
-                            REC {asrProvider === 'nvidia-parakeet' ? '· Hinglish auto' : '· Web'}
+                            REC {asrProvider === 'nvidia-riva-whisper' ? '· Hinglish auto' : '· Web'}
                         </div>
                     )}
                     
@@ -570,7 +570,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                     transition: 'all 0.2s',
                                 }}
                             >
-                                {asrProvider === 'nvidia-parakeet' ? 'Whisper · Hinglish auto' : 'Web Speech · English'}
+                                {asrProvider === 'nvidia-riva-whisper' ? 'Whisper · Hinglish auto' : 'Web Speech · English'}
                                 <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
                             </button>
                             {showAsrDropdown && (
@@ -591,22 +591,22 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                         Speech Engine
                                     </div>
                                     <div
-                                        onClick={() => { setAsrProvider('nvidia-parakeet'); setShowAsrDropdown(false); }}
+                                        onClick={() => { setAsrProvider('nvidia-riva-whisper'); setShowAsrDropdown(false); }}
                                         style={{
                                             padding: '12px',
                                             cursor: nvidiaASR.isAvailable ? 'pointer' : 'not-allowed',
-                                            background: asrProvider === 'nvidia-parakeet' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                            background: asrProvider === 'nvidia-riva-whisper' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
                                             opacity: nvidiaASR.isAvailable ? 1 : 0.5,
                                             borderBottom: '1px solid rgba(255,255,255,0.03)',
                                             transition: 'background 0.15s',
                                         }}
                                     >
-                                        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            Whisper · Hinglish auto-detect
-                                            {asrProvider === 'nvidia-parakeet' && <span style={{ color: 'var(--color-accent-green)', fontSize: '14px' }}>✓</span>}
+<div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            NVIDIA Riva Whisper · Hinglish auto-detect
+                                            {asrProvider === 'nvidia-riva-whisper' && <span style={{ color: 'var(--color-accent-green)', fontSize: '14px' }}>✓</span>}
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
-                                            {nvidiaASR.isAvailable ? 'Recommended · Fast & accurate' : 'Unavailable — check backend'}
+                                            {nvidiaASR.isAvailable ? 'Recommended · Multilingual · HIPAA-ready' : 'Unavailable — check backend'}
                                         </div>
                                     </div>
                                     <div
@@ -658,7 +658,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                             </button>
                             <button
                                 onClick={() => {
-                                    if (asrProvider === 'nvidia-parakeet') {
+                                    if (asrProvider === 'nvidia-riva-whisper') {
                                         nvidiaASR.stopRecording();
                                     } else {
                                         wantRecordingRef.current = false;
@@ -784,7 +784,7 @@ function ScribeComponent(props: { isDemo?: boolean, onDemoComplete?: () => void,
                                         Listening...
                                     </span>
                                     <div style={{ fontSize: '13px', lineHeight: '1.6', color: 'var(--color-text-primary)', fontStyle: 'italic', marginTop: '4px' }}>
-                                        {asrProvider === 'nvidia-parakeet' ? nvidiaASR.interimTranscript : interimTranscript}
+                                        {asrProvider === 'nvidia-riva-whisper' ? nvidiaASR.interimTranscript : interimTranscript}
                                     </div>
                                 </div>
                             </div>

@@ -182,6 +182,8 @@ if [ ! -f "$REQUIREMENTS" ]; then
     exit 1
 fi
 
+echo -e "  ${CYAN}📦 Installing: fastapi, uvicorn, sqlmodel, nvidia-riva-client, ...${NC}"
+
 if ! "$VENV_PYTHON" -m pip install --disable-pip-version-check -q -r "$REQUIREMENTS"; then
     echo -e "  ${RED}✖ pip install failed. Check the errors above.${NC}"
     exit 1

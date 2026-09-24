@@ -1,14 +1,14 @@
 /**
- * NVIDIA Parakeet ASR Hook
- * ─────────────────────────
- * Custom hook for streaming audio transcription using NVIDIA Parakeet model.
+ * NVIDIA Riva Whisper ASR Hook
+ * ─────────────────────────────
+ * Custom hook for streaming audio transcription using NVIDIA Riva Whisper (NIM).
  * Handles audio recording via MediaRecorder and WebSocket communication.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { nvidiaAsrApi } from './api';
 
-export type ASRProvider = 'web-speech' | 'nvidia-parakeet';
+export type ASRProvider = 'web-speech' | 'nvidia-riva-whisper';
 
 interface NvidiaASROptions {
   language?: string;

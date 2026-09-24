@@ -19,3 +19,4 @@ deep-translator
 datasets~=2.21.0
 aiohttp
 faker
+nvidia-riva-client

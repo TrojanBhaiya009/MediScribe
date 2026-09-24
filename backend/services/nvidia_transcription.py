@@ -1,11 +1,11 @@
 """
-ASR Transcription Service (Groq Whisper)
-─────────────────────────────────────────
-Provides speech-to-text transcription using Groq's Whisper API.
-Groq offers free, fast Whisper transcription via an OpenAI-compatible API.
+ASR Transcription Service (NVIDIA Riva/NIM Whisper)
+───────────────────────────────────────────────────
+Provides speech-to-text transcription using NVIDIA Riva ASR service via gRPC.
+Uses Whisper large v3 model hosted on NVIDIA NIM (NVIDIA Inference Microservices).
 
 The WebSocket streaming architecture remains the same:
-  Frontend mic → WebSocket → accumulate chunks → Groq Whisper → text back
+  Frontend mic → WebSocket → accumulate chunks → NVIDIA Riva ASR → text back
 """
 
 import io
@@ -13,21 +13,27 @@ import struct
 import asyncio
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from openai import OpenAI
+
+import riva.client
+import riva.client.proto.riva_asr_pb2 as rasr
+import riva.client.proto.riva_audio_pb2 as raudio
+from riva.client.auth import Auth
+from riva.client.asr import ASRService
 
 
 class ASRSettings(BaseSettings):
     """Settings for ASR integration."""
-    GROQ_API_KEY: str = ""
+    NVIDIA_API_KEY: str = ""
+    NVIDIA_FUNCTION_ID: str = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
+    NVIDIA_SERVER_URI: str = "grpc.nvcf.nvidia.com:443"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 asr_settings = ASRSettings()
 
-# Groq Whisper configuration
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_WHISPER_MODEL = "whisper-large-v3-turbo"
+# NVIDIA Riva Whisper configuration
+NVIDIA_WHISPER_MODEL = "whisper-large-v3"
 DEFAULT_MEDICAL_PROMPT = (
     "Verbatim multilingual transcription of an Indian doctor-patient consultation, often Hindi-English code-switching. "
     "Do not infer, summarize, continue, paraphrase, or add any words not spoken. "
@@ -41,34 +47,46 @@ DEFAULT_MEDICAL_PROMPT = (
 
 class NvidiaTranscriptionService:
     """
-    ASR transcription service using Groq Whisper API.
+    ASR transcription service using NVIDIA Riva/NIM Whisper API.
 
     Class name kept as NvidiaTranscriptionService for backward compatibility
-    with existing router imports. Internally uses Groq Whisper.
+    with existing router imports. Internally uses NVIDIA Riva gRPC client.
     """
 
     def __init__(self):
-        self.api_key = asr_settings.GROQ_API_KEY
-        self._client: Optional[OpenAI] = None
+        self.api_key = asr_settings.NVIDIA_API_KEY
+        self.function_id = asr_settings.NVIDIA_FUNCTION_ID
+        self.server_uri = asr_settings.NVIDIA_SERVER_URI
+        self._service: Optional[ASRService] = None
+        self._auth: Optional[Auth] = None
         self._audio_buffer: List[bytes] = []
 
         # For backward compat — these attrs are read by the router
-        self.model = GROQ_WHISPER_MODEL
-        self.api_url = f"{GROQ_BASE_URL}/audio/transcriptions"
+        self.model = NVIDIA_WHISPER_MODEL
+        self.api_url = self.server_uri
 
         if self.api_key and self.api_key not in ("", "placeholder-dev"):
-            self._client = OpenAI(
-                api_key=self.api_key,
-                base_url=GROQ_BASE_URL,
-            )
-            print(f"[ASR] Initialized — engine: Groq Whisper ({GROQ_WHISPER_MODEL})")
+            self._init_riva_client()
+            print(f"[ASR] Initialized — engine: NVIDIA Riva Whisper ({NVIDIA_WHISPER_MODEL})")
         else:
-            print(f"[ASR] WARNING — GROQ_API_KEY not set. ASR will not work.")
-            print(f"[ASR] Set GROQ_API_KEY in backend/.env (free at console.groq.com)")
+            print(f"[ASR] WARNING — NVIDIA_API_KEY not set. ASR will not work.")
+            print(f"[ASR] Set NVIDIA_API_KEY in backend/.env")
+
+    def _init_riva_client(self):
+        """Initialize NVIDIA Riva gRPC client with authentication."""
+        self._auth = Auth(
+            use_ssl=True,
+            uri=self.server_uri,
+            metadata_args=[
+                ["function-id", self.function_id],
+                ["authorization", f"Bearer {self.api_key}"],
+            ],
+        )
+        self._service = ASRService(self._auth)
 
     def is_available(self) -> bool:
         """Check if ASR service is available and configured."""
-        return self._client is not None
+        return self._service is not None
 
     def add_audio_chunk(self, chunk: bytes):
         """Add audio chunk to buffer for batch processing."""
@@ -89,17 +107,17 @@ class NvidiaTranscriptionService:
         prompt: Optional[str] = None,
     ) -> str:
         """
-        Transcribe audio bytes using Groq Whisper API.
+        Transcribe audio bytes using NVIDIA Riva Whisper API.
 
         Args:
             audio_bytes: Raw PCM audio bytes (16-bit, mono, 16kHz)
-            language: Language code (e.g., 'en', 'hi', 'es')
+            language: Language code (e.g., 'en', 'hi', 'multi' for auto)
 
         Returns:
             Transcription text
         """
         if not self.is_available():
-            raise RuntimeError("ASR not available. Set GROQ_API_KEY in backend/.env (free at console.groq.com)")
+            raise RuntimeError("ASR not available. Set NVIDIA_API_KEY in backend/.env")
 
         # Create WAV from raw PCM
         wav_bytes = self._create_wav(audio_bytes, sample_rate=16000)
@@ -107,31 +125,37 @@ class NvidiaTranscriptionService:
         print(f"[ASR] Transcribing {len(audio_bytes)} bytes of audio "
               f"(WAV: {len(wav_bytes)} bytes), language={language}")
 
-        try:
-            # Whisper API expects a file-like object
-            audio_file = io.BytesIO(wav_bytes)
-            audio_file.name = "audio.wav"
+        # Retry logic for transient NIM worker cold-start issues
+        max_retries = 3
+        base_delay = 2.0
+        
+        for attempt in range(max_retries):
+            try:
+                # Run the synchronous gRPC call in a thread
+                transcript = await asyncio.to_thread(
+                    self._call_riva_whisper, wav_bytes, language, prompt
+                )
 
-            # Run the synchronous OpenAI-compatible call in a thread
-            transcript = await asyncio.to_thread(
-                self._call_whisper, audio_file, language, prompt
-            )
+                print(f"[ASR] Transcript: '{transcript[:100]}'" if transcript else "[ASR] Empty transcript")
+                return transcript
 
-            print(f"[ASR] Transcript: '{transcript[:100]}'" if transcript else "[ASR] Empty transcript")
-            return transcript
+            except Exception as e:
+                error_msg = str(e)
+                print(f"[ASR] Transcription error (attempt {attempt + 1}/{max_retries}): {error_msg}")
 
-        except Exception as e:
-            error_msg = str(e)
-            print(f"[ASR] Transcription error: {error_msg}")
-
-            if "401" in error_msg or "Unauthorized" in error_msg or "invalid_api_key" in error_msg:
-                raise RuntimeError("Groq API key is invalid or expired. Get a new one at console.groq.com")
-            elif "429" in error_msg or "rate_limit" in error_msg:
-                raise RuntimeError("Groq API rate limit hit. Wait a moment and try again (free tier: 20 req/min).")
-            elif "insufficient_quota" in error_msg:
-                raise RuntimeError("Groq API quota exceeded. Check your usage at console.groq.com")
-            else:
-                raise RuntimeError(f"Whisper transcription failed: {error_msg}")
+                # Don't retry on authentication errors
+                if "UNAUTHENTICATED" in error_msg or "401" in error_msg:
+                    raise RuntimeError("NVIDIA API key is invalid or expired.")
+                elif "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
+                    raise RuntimeError("NVIDIA API rate limit hit. Wait a moment and try again.")
+                
+                # Retry on transient errors (worker cold-start, deadline exceeded)
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"[ASR] Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    raise RuntimeError(f"Whisper transcription failed after {max_retries} attempts: {error_msg}")
 
     def build_prompt(self, recent_transcript: str = "") -> str:
         recent_transcript = " ".join(recent_transcript.split()).strip()
@@ -147,89 +171,71 @@ class NvidiaTranscriptionService:
             f"Continue from: {recent_transcript}"
         )
 
-    def _call_whisper(self, audio_file: io.BytesIO, language: str, prompt: Optional[str]) -> str:
-        """Synchronous call to Groq Whisper API (OpenAI-compatible)."""
-        # Map short language codes
+    def _call_riva_whisper(self, wav_bytes: bytes, language: str, prompt: Optional[str]) -> str:
+        """Synchronous call to NVIDIA Riva Whisper API via gRPC."""
+        # Map language codes to Riva format
         lang_map = {
-            "en": "en",
-            "hi": "hi",
-            "es": "es",
-            "fr": "fr",
-            "de": "de",
-            "ja": "ja",
-            "zh": "zh",
-            "ko": "ko",
-            "pt": "pt",
-            "ru": "ru",
-            "ar": "ar",
+            "en": "en-US",
+            "hi": "hi-IN",
+            "es": "es-ES",
+            "fr": "fr-FR",
+            "de": "de-DE",
+            "ja": "ja-JP",
+            "zh": "zh-CN",
+            "ko": "ko-KR",
+            "pt": "pt-BR",
+            "ru": "ru-RU",
+            "ar": "ar-SA",
         }
         normalized_language = (language or "auto").strip().lower()
-        whisper_lang = lang_map.get(normalized_language, normalized_language)
-
-        request_args = dict(
-            model=GROQ_WHISPER_MODEL,
-            file=audio_file,
-            response_format="verbose_json",
-            temperature=0.0,
-            prompt=prompt or DEFAULT_MEDICAL_PROMPT,
-        )
-        # Omitting language lets multilingual Whisper detect Hindi-English
-        # code-switching instead of forcing the entire consultation to English.
-        if whisper_lang not in {"", "auto", "mixed", "hinglish"}:
-            request_args["language"] = whisper_lang
-
-        result = self._client.audio.transcriptions.create(**request_args)
-
-        # verbose_json returns object with .text and often .segments.
-        if isinstance(result, str):
-            text = result.strip()
+        
+        # For multilingual/Hinglish, use "multi" which enables auto-detection
+        if normalized_language in {"auto", "mixed", "hinglish", "multi"}:
+            riva_language = "multi"
         else:
-            text = getattr(result, "text", "").strip()
+            riva_language = lang_map.get(normalized_language, normalized_language)
 
-        def _seg_val(seg, key):
-            if isinstance(seg, dict):
-                return seg.get(key)
-            return getattr(seg, key, None)
+        # Create RecognitionConfig
+        config = rasr.RecognitionConfig(
+            encoding=raudio.AudioEncoding.LINEAR_PCM,
+            sample_rate_hertz=16000,
+            language_code=riva_language,
+            max_alternatives=1,
+            enable_automatic_punctuation=True,
+            enable_word_time_offsets=False,
+            verbatim_transcripts=True,
+        )
 
-        def _seg_text(seg) -> str:
-            value = _seg_val(seg, "text")
-            return str(value or "").strip()
+        # Note: Riva's RecognitionConfig doesn't have a direct "prompt" field like Whisper.
+        # The medical context is handled via the model's training. For NIM Whisper,
+        # we rely on the model's inherent multilingual capability.
+        
+        try:
+            response = self._service.offline_recognize(wav_bytes, config)
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[ASR] Riva gRPC error: {error_msg}")
+            raise
 
-        segments = getattr(result, "segments", None) if not isinstance(result, str) else None
-        if segments:
-            kept_texts = []
-            for seg in segments:
-                seg_text = _seg_text(seg)
-                if not seg_text:
-                    continue
+        # Extract transcript from response
+        if not response.results or not response.results[0].alternatives:
+            return ""
 
-                no_speech_prob = _seg_val(seg, "no_speech_prob")
-                avg_logprob = _seg_val(seg, "avg_logprob")
-                compression_ratio = _seg_val(seg, "compression_ratio")
-
-                # Conservative confidence gates to suppress junk fragments.
-                if no_speech_prob is not None and float(no_speech_prob) > 0.45:
-                    continue
-                if avg_logprob is not None and float(avg_logprob) < -0.9:
-                    continue
-                if compression_ratio is not None and float(compression_ratio) > 2.2:
-                    continue
-
-                kept_texts.append(seg_text)
-
-            if kept_texts:
-                text = " ".join(kept_texts).strip()
+        text = response.results[0].alternatives[0].transcript.strip()
 
         if not text:
             return ""
-        
-        # Filter out hallucinated silence transcripts and prompt bleed-through.
+
+# Filter out hallucinated silence transcripts and prompt bleed-through.
         lower_text = text.lower()
         
         # Only reject if the entire transcript matches these patterns.
         silence_hallucinations = {
             "thank you", "thanks", "you", ".", "..", "...", "thank you.",
-            "thanks.", "bye.", "bye"
+            "thanks.", "bye.", "bye",
+            # Hindi/Devanagari silence hallucinations observed in testing
+            "झाल", "अ", "आ", "ह", "हूँ", "है", "हैं", "था", "थी", "थे",
+            "जी", "हाँ", "नहीं", "अच्छा", "ठीक", "बस", "चलो"
         }
         
         # Only reject very short, exact matches to silence hallucinations.
@@ -244,12 +250,13 @@ class NvidiaTranscriptionService:
             or "please subscribe" in lower_text
         ):
             return ""
-
-        filler_tokens = {"uh", "um", "hmm", "huh", "oh", "ah", "er", "mm"}
+        
+        filler_tokens = {"uh", "um", "hmm", "huh", "oh", "ah", "er", "mm",
+                         "हूँ", "है", "हैं", "था", "थी", "थे", "जी", "हाँ", "नहीं", "अच्छा", "ठीक", "बस", "चलो"}
         words = [w.strip(".,!?;:'\"()[]{}") for w in lower_text.split() if w.strip()]
         if words and len(words) <= 5 and all(w in filler_tokens for w in words):
             return ""
-            
+        
         return text
 
     async def transcribe_buffer(self, language: str = "auto") -> str:
@@ -305,7 +312,7 @@ class NvidiaTranscriptionService:
             Transcription text
         """
         if not self.is_available():
-            raise RuntimeError("ASR not available. Set GROQ_API_KEY in backend/.env")
+            raise RuntimeError("ASR not available. Set NVIDIA_API_KEY in backend/.env")
 
         with open(file_path, "rb") as f:
             audio_bytes = f.read()

@@ -179,7 +179,7 @@ async def check_asr_status():
         "api_key_configured": available,
         "model": service.model,
         "api_url": service.api_url,
-        "engine": "groq-whisper",
+        "engine": "nvidia-riva-whisper",
     }
 
 
@@ -192,7 +192,7 @@ async def websocket_transcription(websocket: WebSocket):
     if not service.is_available():
         await websocket.send_json({
             "type": "error",
-            "message": "ASR not available. Set OPENAI_API_KEY in backend/.env"
+            "message": "ASR not available. Set NVIDIA_API_KEY in backend/.env"
         })
         await websocket.close()
         return
@@ -305,7 +305,7 @@ async def websocket_transcription(websocket: WebSocket):
 
                     await websocket.send_json({
                         "type": "ready",
-                        "message": f"Ready for {language} at {sample_rate}Hz (Whisper engine)"
+                        "message": f"Ready for {language} at {sample_rate}Hz (NVIDIA Riva Whisper)"
                     })
 
                 elif msg_type == "audio":
@@ -371,9 +371,9 @@ async def test_asr_connection():
     if not service.is_available():
         return {
             "success": False,
-            "engine": "groq-whisper",
-            "error": "GROQ_API_KEY not configured",
-            "hint": "Set GROQ_API_KEY=gsk_xxx in backend/.env (free at console.groq.com)"
+            "engine": "nvidia-riva-whisper",
+            "error": "NVIDIA_API_KEY not configured",
+            "hint": "Set NVIDIA_API_KEY in backend/.env (get key at https://build.nvidia.com/)"
         }
 
     # Generate 1 second of silent audio (16kHz, 16-bit, mono)
@@ -383,18 +383,18 @@ async def test_asr_connection():
         transcript = await service.transcribe_audio_bytes(silent_pcm, "en")
         return {
             "success": True,
-            "engine": "groq-whisper",
+            "engine": "nvidia-riva-whisper",
             "model": service.model,
             "transcript": transcript,
-            "message": "Groq Whisper API is working correctly"
+            "message": "NVIDIA Riva Whisper API is working correctly"
         }
     except Exception as e:
         return {
             "success": False,
-            "engine": "groq-whisper",
+            "engine": "nvidia-riva-whisper",
             "model": service.model,
             "error": str(e),
-            "hint": "Check your GROQ_API_KEY in backend/.env (free at console.groq.com)"
+            "hint": "Check your NVIDIA_API_KEY in backend/.env"
         }
 
 
@@ -411,7 +411,7 @@ async def transcribe_audio_file(
     if not service.is_available():
         raise HTTPException(
             status_code=503,
-            detail="ASR not available. Set GROQ_API_KEY in backend/.env (free at console.groq.com)"
+            detail="ASR not available. Set NVIDIA_API_KEY in backend/.env (get key at https://build.nvidia.com/)"
         )
 
     try:

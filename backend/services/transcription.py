@@ -1,111 +1,36 @@
-import os
-from openai import OpenAI
-from pydantic_settings import BaseSettings, SettingsConfigDict
+"""
+Transcription Service — NVIDIA Riva Whisper Large v3
+────────────────────────────────────────────────────────
+Unified transcription interface using NVIDIA Riva ASR (Whisper Large v3) via gRPC.
+This is the single transcription provider for the MediScribe pipeline.
+"""
 
-class AISettings(BaseSettings):
-    GROQ_API_KEY: str = ""
-    OPENAI_API_KEY: str = "placeholder-dev"
-    ANTHROPIC_API_KEY: str = "placeholder-dev"
+import asyncio
+from services.nvidia_transcription import get_nvidia_service
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-ai_settings = AISettings()
-
-# Use Groq Whisper for transcription (free, fast)
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_WHISPER_MODEL = "whisper-large-v3-turbo"
-
-if ai_settings.GROQ_API_KEY and ai_settings.GROQ_API_KEY not in ("", "placeholder-dev"):
-    client = OpenAI(api_key=ai_settings.GROQ_API_KEY, base_url=GROQ_BASE_URL)
-    _whisper_model = GROQ_WHISPER_MODEL
-    print(f"[Transcription] Using Groq Whisper ({GROQ_WHISPER_MODEL})")
-elif ai_settings.OPENAI_API_KEY and ai_settings.OPENAI_API_KEY not in ("", "placeholder-dev"):
-    client = OpenAI(api_key=ai_settings.OPENAI_API_KEY)
-    _whisper_model = "whisper-1"
-    print(f"[Transcription] Using OpenAI Whisper (whisper-1)")
-else:
-    client = None
-    _whisper_model = None
-    print(f"[Transcription] WARNING — No API key configured for transcription")
-
-def transcribe_audio(file_path: str, language: str = None) -> str:
+async def transcribe_audio(file_path: str, language: str = None) -> str:
     """
-    Transcribes audio file using Groq Whisper API (or OpenAI Whisper fallback).
+    Transcribe audio file using NVIDIA Riva Whisper Large v3.
+    
+    Args:
+        file_path: Path to audio file (WAV/PCM)
+        language: Language code (en, hi, auto, multi for Hinglish)
+    
+    Returns:
+        Transcription text
     """
-    if client is None:
-        raise RuntimeError("Transcription not available. Set GROQ_API_KEY in backend/.env")
-    try:
-        with open(file_path, "rb") as audio_file:
-            request_args = dict(
-                model=_whisper_model,
-                file=audio_file,
-                temperature=0.0,
-                prompt=(
-                    "Verbatim multilingual Indian medical consultation, often Hindi-English. "
-                    "Never infer or add speech. Preserve medicine names, dosage numbers, frequencies, and investigations exactly. "
-                    "Terms may include Paracetamol, Dolo, Crocin, CT scan, MRI, X-ray, ultrasound, ECG, CBC, LFT, KFT, and HbA1c."
-                ),
-            )
-            normalized_language = (language or "auto").strip().lower()
-            if normalized_language not in {"", "auto", "mixed", "hinglish"}:
-                request_args["language"] = normalized_language.split("-")[0]
-            transcript = client.audio.transcriptions.create(**request_args)
-        
-        # Filter common Whisper silence hallucinations
-        text = transcript.text.strip()
-        lower_text = text.lower()
-        
-        # Reject empty / punctuation-only results
-        stripped = lower_text.strip().strip('.!,?-_ ')
-        if not stripped:
-            return ""
-        
-        # ── Foreign script detection ──
-        import re
-        foreign_scripts = re.compile(
-            r'[\u3000-\u9fff'
-            r'\uac00-\ud7af'
-            r'\u0400-\u04ff'
-            r'\u0600-\u06ff'
-            r'\u0e00-\u0e7f'
-            r']'
+    service = get_nvidia_service()
+    
+    if not service.is_available():
+        raise RuntimeError(
+            "NVIDIA Riva ASR not available. "
+            "Set NVIDIA_API_KEY in backend/.env (get key at https://build.nvidia.com/)"
         )
-        if foreign_scripts.search(text):
-            return ""
-        
-        # Only filter obvious hallucinations, not legitimate medical speech
-        obvious_hallucinations = [
-            "thank you for watching",
-            "thanks for watching",
-            "subscribe",
-            "my channel",
-            "like and share",
-            "amara.org",
-            "subtitle",
-            "closed captions",
-        ]
-        
-        for kw in obvious_hallucinations:
-            if kw in lower_text:
-                return ""
-        
-        # ── Repetition detector ──
-        words = stripped.split()
-        if len(words) >= 4:
-            from collections import Counter
-            word_counts = Counter(words)
-            most_common_count = word_counts.most_common(1)[0][1]
-            if most_common_count / len(words) > 0.65:
-                return ""
-        
-        # Only reject very short exact matches
-        silence_hallucinations = {
-            "thank you", "thanks", "you", "bye", ".", "..", "..."
-        }
-        if stripped in silence_hallucinations and len(text) < 15:
-            return ""
-            
-        return text
+    
+    try:
+        transcript = await service.transcribe_file(file_path, language or "auto")
+        return transcript
     except Exception as e:
-        print(f"Error in transcription: {e}")
-        raise e
+        print(f"[Transcription] Error: {e}")
+        raise
